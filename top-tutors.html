@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Top Tutors - HarpsLearn</title>
+
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f0f2f5;
+            min-height: 100vh;
+        }
+
+        .navbar {
+            background: white;
+            padding: 0.6rem 1.2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        .navbar .logo {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #1a1a2e;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            cursor: pointer;
+        }
+        .navbar .logo span { color: #667eea; }
+        .navbar .back-btn {
+            background: none;
+            border: none;
+            font-size: 1.2rem;
+            cursor: pointer;
+            color: #666;
+            padding: 4px 10px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        .navbar .back-btn:hover { background: #f0f2f5; }
+
+        .container { max-width: 700px; margin: 0 auto; padding: 0.8rem; }
+
+        .page-header { margin-bottom: 1rem; }
+        .page-header h1 { font-size: 1.5rem; color: #1a1a2e; }
+        .page-header p { color: #666; font-size: 0.9rem; margin-top: 0.2rem; }
+
+        .filter-section {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            overflow-x: auto;
+            padding: 0.2rem 0;
+        }
+        .filter-btn {
+            padding: 6px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 20px;
+            background: white;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+            color: #666;
+        }
+        .filter-btn:hover { border-color: #667eea; color: #667eea; }
+        .filter-btn.active { background: #667eea; color: white; border-color: #667eea; }
+
+        .tutor-card {
+            background: white;
+            border-radius: 14px;
+            padding: 1rem;
+            margin-bottom: 0.8rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .tutor-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
+        .tutor-card .tutor-header {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+        .tutor-card .tutor-avatar {
+            width: 56px; height: 56px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 1.5rem;
+            flex-shrink: 0;
+        }
+        .tutor-card .tutor-avatar img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+        .tutor-card .tutor-info { flex: 1; }
+        .tutor-card .tutor-info .name { font-weight: 700; color: #1a1a2e; font-size: 1.05rem; }
+        .tutor-card .tutor-info .subjects { font-size: 0.8rem; color: #666; margin: 0.2rem 0; }
+        .tutor-card .tutor-info .rating { color: #f59e0b; font-size: 0.85rem; }
+        .tutor-card .tutor-info .rate { font-weight: 700; color: #667eea; font-size: 0.9rem; }
+        .tutor-card .tutor-info .bio { font-size: 0.8rem; color: #666; margin: 0.3rem 0; line-height: 1.4; }
+        .tutor-card .tutor-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.8rem;
+            flex-wrap: wrap;
+        }
+        .tutor-card .tutor-actions button {
+            padding: 6px 16px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .tutor-card .tutor-actions .btn-book {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+        .tutor-card .tutor-actions .btn-book:hover { transform: scale(1.05); }
+        .tutor-card .tutor-actions .btn-profile {
+            background: #f0f2f5;
+            color: #666;
+        }
+        .tutor-card .tutor-actions .btn-profile:hover { background: #e5e7eb; }
+        .tutor-card .verified-badge {
+            display: inline-block;
+            background: #22c55e;
+            color: white;
+            font-size: 0.6rem;
+            padding: 2px 10px;
+            border-radius: 10px;
+            margin-left: 4px;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: white;
+            padding: 0.8rem 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            z-index: 5000;
+            animation: toastSlide 0.4s ease;
+            max-width: 90%;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+        .toast.success { background: #22c55e; }
+        .toast.error { background: #ef4444; }
+        .toast.warning { background: #f59e0b; }
+        @keyframes toastSlide { from { transform: translateX(-50%) translateY(100px); opacity: 0; } to { transform: translateX(-50%) translateY(0); opacity: 1; } }
+
+        .text-muted { color: #666; font-size: 0.85rem; }
+        .flex-between { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; }
+
+        @media (max-width: 600px) {
+            .navbar { padding: 0.4rem 0.8rem; }
+            .navbar .logo { font-size: 1.1rem; }
+            .container { padding: 0.4rem; }
+            .tutor-card .tutor-header { flex-wrap: wrap; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="navbar">
+        <div class="logo" onclick="window.location.href='student-dashboard.html'">🎓 Harps<span>Learn</span></div>
+        <button class="back-btn" onclick="window.location.href='student-dashboard.html'">✕</button>
+    </div>
+
+    <div class="container">
+        <div class="page-header">
+            <h1>👨‍🏫 Top Tutors</h1>
+            <p>Find verified tutors across Africa. Book 1-on-1 sessions and ace your exams!</p>
+        </div>
+
+        <div class="filter-section">
+            <button class="filter-btn active" data-filter="all">📋 All</button>
+            <button class="filter-btn" data-filter="math">📐 Mathematics</button>
+            <button class="filter-btn" data-filter="english">📖 English</button>
+            <button class="filter-btn" data-filter="science">🔬 Science</button>
+            <button class="filter-btn" data-filter="top">⭐ Top Rated</button>
+        </div>
+
+        <div id="tutorList">
+            <div style="text-align:center;padding:2rem;color:#999;">
+                <span style="font-size:2rem;display:block;margin-bottom:0.5rem;">👨‍🏫</span>
+                Loading tutors...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDy-j3_iZwv7IE7HYHircFeEWGdoGizf5M",
+            authDomain: "harpslearn.firebaseapp.com",
+            projectId: "harpslearn",
+            storageBucket: "harpslearn.firebasestorage.app",
+            messagingSenderId: "625210543198",
+            appId: "1:625210543198:web:6faebd2af1465facf338cf",
+            measurementId: "G-8Z8HVC5V5J"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        let allTutors = [];
+
+        function showToast(message, type = 'info') {
+            const existing = document.querySelector('.toast');
+            if (existing) existing.remove();
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => { toast.remove(); }, 4000);
+        }
+
+        async function loadTutors() {
+            try {
+                const user = auth.currentUser;
+                if (!user) { window.location.href = 'index.html'; return; }
+
+                const snapshot = await db.collection('tutors')
+                    .where('verificationStatus', '==', 'approved')
+                    .get();
+
+                allTutors = [];
+                for (const doc of snapshot.docs) {
+                    const data = doc.data();
+                    // Get user info
+                    const userDoc = await db.collection('users').doc(data.userId).get();
+                    const userData = userDoc.exists ? userDoc.data() : {};
+                    allTutors.push({
+                        id: doc.id,
+                        ...data,
+                        userName: userData.fullName || 'Tutor',
+                        userEmail: userData.email || '',
+                        profilePic: userData.profilePic || ''
+                    });
+                }
+
+                // Sort by rating
+                allTutors.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+
+                renderTutors(allTutors);
+
+            } catch (error) {
+                console.error('Error loading tutors:', error);
+                showToast('Error loading tutors', 'error');
+                document.getElementById('tutorList').innerHTML = `
+                    <div class="text-muted" style="padding:2rem;text-align:center;">Error loading tutors. Please refresh.</div>
+                `;
+            }
+        }
+
+        function renderTutors(tutors) {
+            const container = document.getElementById('tutorList');
+
+            if (!tutors || tutors.length === 0) {
+                container.innerHTML = `
+                    <div class="text-muted" style="padding:2rem;text-align:center;">👨‍🏫 No tutors available yet</div>
+                `;
+                return;
+            }
+
+            let html = '';
+            for (const tutor of tutors) {
+                const name = tutor.userName || 'Tutor';
+                const initial = name.charAt(0).toUpperCase();
+                const subjects = Array.isArray(tutor.subjects) ? tutor.subjects.join(', ') : 'Multiple subjects';
+                const rating = tutor.rating || 0;
+                const rate = tutor.hourlyRate || 0;
+                const verified = tutor.isVerified ? '<span class="verified-badge">✅ Verified</span>' : '';
+                const bio = tutor.bio || 'Experienced tutor passionate about teaching.';
+
+                html += `
+                    <div class="tutor-card">
+                        <div class="tutor-header">
+                            <div class="tutor-avatar">
+                                ${tutor.profilePic ? `<img src="${tutor.profilePic}" alt="${name}" />` : initial}
+                            </div>
+                            <div class="tutor-info">
+                                <div class="name">${name} ${verified}</div>
+                                <div class="subjects">📚 ${subjects}</div>
+                                <div class="rating">⭐ ${rating.toFixed(1)} (${tutor.totalStudents || 0} students)</div>
+                                <div class="rate">₦${rate.toLocaleString()}/hour</div>
+                                <div class="bio">${bio}</div>
+                            </div>
+                        </div>
+                        <div class="tutor-actions">
+                            <button class="btn-book" onclick="bookTutor('${tutor.id}')">📚 Book Now</button>
+                            <button class="btn-profile" onclick="viewProfile('${tutor.id}')">👁️ View Profile</button>
+                        </div>
+                    </div>
+                `;
+            }
+            container.innerHTML = html;
+        }
+
+        function bookTutor(tutorId) {
+            showToast('📚 Booking system coming soon! You will be able to book this tutor.', 'warning');
+        }
+
+        function viewProfile(tutorId) {
+            showToast('👁️ Tutor profile coming soon!', 'warning');
+        }
+
+        // Filter functionality
+        document.querySelector('.filter-section').addEventListener('click', function(e) {
+            if (e.target.classList.contains('filter-btn')) {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+
+                const filter = e.target.dataset.filter;
+                let filtered = allTutors;
+
+                if (filter === 'top') {
+                    filtered = allTutors.filter(t => (t.rating || 0) >= 4.5);
+                } else if (filter !== 'all') {
+                    filtered = allTutors.filter(t => {
+                        const subjects = Array.isArray(t.subjects) ? t.subjects.join(' ').toLowerCase() : '';
+                        return subjects.includes(filter);
+                    });
+                }
+
+                renderTutors(filtered);
+            }
+        });
+
+        auth.onAuthStateChanged(user => {
+            if (!user) { window.location.href = 'index.html'; }
+            else { loadTutors(); }
+        });
+
+        console.log('👨‍🏫 Top Tutors loaded!');
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,1462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>HarpsLearn - Tutor</title>
+
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
+    <script src="https://upload-widget.cloudinary.com/global/all.js"></script>
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f0f2f5;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        #loadingScreen {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.5s ease;
+        }
+        #loadingScreen .logo-text {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: white;
+            margin-bottom: 1.5rem;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+        #loadingScreen .logo-text span { color: #fbbf24; }
+        #loadingScreen .spinner-container {
+            width: 60px;
+            height: 60px;
+            position: relative;
+        }
+        #loadingScreen .spinner-container .ring {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 3px solid transparent;
+            border-top-color: white;
+            animation: spin 1s linear infinite;
+        }
+        #loadingScreen .spinner-container .ring:nth-child(2) {
+            width: 80%;
+            height: 80%;
+            top: 10%;
+            left: 10%;
+            border-top-color: #fbbf24;
+            animation-duration: 0.8s;
+            animation-direction: reverse;
+        }
+        #loadingScreen .spinner-container .ring:nth-child(3) {
+            width: 60%;
+            height: 60%;
+            top: 20%;
+            left: 20%;
+            border-top-color: #22c55e;
+            animation-duration: 1.2s;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        #loadingScreen p {
+            margin-top: 1.5rem;
+            color: rgba(255,255,255,0.8);
+            font-size: 0.95rem;
+            letter-spacing: 1px;
+        }
+        #loadingScreen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        #mainContent { display: none; opacity: 0; transition: opacity 0.5s ease; }
+        #mainContent.visible { display: block; opacity: 1; }
+
+        .navbar {
+            background: white;
+            padding: 0.6rem 1.2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        .navbar .logo {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #1a1a2e;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            cursor: pointer;
+        }
+        .navbar .logo span { color: #667eea; }
+        .navbar .right-section {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .navbar .right-section .nav-icon {
+            width: 38px; height: 38px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: none;
+            border: none;
+            font-size: 1.2rem;
+            position: relative;
+        }
+        .navbar .right-section .nav-icon:hover { background: #f0f2f5; }
+        .navbar .right-section .nav-icon .badge {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            background: #ef4444;
+            color: white;
+            font-size: 0.5rem;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 10px;
+            min-width: 16px;
+            text-align: center;
+        }
+        .navbar .right-section .avatar-icon {
+            width: 34px; height: 34px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 0.9rem;
+            cursor: pointer;
+            border: 2px solid white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            object-fit: cover;
+            overflow: hidden;
+        }
+        .navbar .right-section .avatar-icon img { width: 100%; height: 100%; object-fit: cover; }
+
+        .hamburger {
+            width: 38px; height: 38px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+            background: none;
+            border: none;
+            padding: 6px;
+        }
+        .hamburger:hover { background: #f0f2f5; }
+        .hamburger span {
+            display: block;
+            width: 20px;
+            height: 2px;
+            background: #1a1a2e;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+        }
+        .hamburger.active span:nth-child(1) { transform: rotate(45deg) translate(4px, 4px); }
+        .hamburger.active span:nth-child(2) { opacity: 0; }
+        .hamburger.active span:nth-child(3) { transform: rotate(-45deg) translate(4px, -4px); }
+
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.4);
+            z-index: 2000;
+            animation: fadeIn 0.3s ease;
+        }
+        .sidebar-overlay.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: -320px;
+            width: 320px;
+            height: 100vh;
+            background: white;
+            z-index: 2001;
+            transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 4px 0 20px rgba(0,0,0,0.1);
+            overflow-y: auto;
+            padding: 1.5rem;
+        }
+        .sidebar.open { left: 0; }
+        .sidebar .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #666;
+            float: right;
+            padding: 4px 8px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        .sidebar .close-btn:hover { background: #f0f2f5; }
+
+        .sidebar .user-profile {
+            text-align: center;
+            padding: 1rem 0 1.5rem 0;
+            border-bottom: 1px solid #e5e7eb;
+            margin-bottom: 1rem;
+        }
+        .sidebar .user-profile .avatar {
+            width: 80px; height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 2rem;
+            font-weight: 700;
+            margin: 0 auto 0.75rem auto;
+            border: 3px solid white;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            object-fit: cover;
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .sidebar .user-profile .avatar:hover { transform: scale(1.05); }
+        .sidebar .user-profile .avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .sidebar .user-profile .name { font-weight: 700; font-size: 1.1rem; color: #1a1a2e; }
+        .sidebar .user-profile .email { color: #666; font-size: 0.8rem; }
+        .sidebar .user-profile .badge {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 2px 12px;
+            border-radius: 12px;
+            font-size: 0.65rem;
+            font-weight: 600;
+            margin-top: 4px;
+        }
+
+        .sidebar .menu-section { margin-bottom: 1.2rem; }
+        .sidebar .menu-section .menu-label {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            color: #999;
+            font-weight: 700;
+            letter-spacing: 1px;
+            margin-bottom: 0.4rem;
+            padding: 0 0.5rem;
+        }
+        .sidebar .menu-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.6rem 0.8rem;
+            border-radius: 10px;
+            color: #444;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            font-weight: 500;
+            border: none;
+            background: none;
+            width: 100%;
+            text-align: left;
+            font-size: 0.9rem;
+        }
+        .sidebar .menu-item:hover { background: #f0f2f5; color: #667eea; }
+        .sidebar .menu-item.active { background: #667eea; color: white; }
+        .sidebar .menu-item .icon { font-size: 1.1rem; width: 24px; text-align: center; }
+        .sidebar .menu-item .badge-count {
+            margin-left: auto;
+            background: #ef4444;
+            color: white;
+            font-size: 0.55rem;
+            padding: 2px 8px;
+            border-radius: 10px;
+        }
+        .sidebar .menu-item.logout {
+            color: #ef4444;
+            margin-top: 0.5rem;
+            border-top: 1px solid #e5e7eb;
+            padding-top: 0.8rem;
+        }
+        .sidebar .menu-item.logout:hover { background: #fee2e2; color: #dc2626; }
+        .sidebar .menu-item .menu-arrow { margin-left: auto; color: #ccc; font-size: 0.7rem; }
+
+        .notif-modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: white;
+            z-index: 3000;
+            animation: slideUp 0.3s ease;
+            overflow-y: auto;
+        }
+        .notif-modal.active { display: block; }
+        @keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+        .notif-modal .notif-header {
+            padding: 1rem 1.2rem;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            background: white;
+            z-index: 10;
+        }
+        .notif-modal .notif-header h3 { font-size: 1.2rem; color: #1a1a2e; }
+        .notif-modal .notif-header .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #666;
+            padding: 4px 8px;
+        }
+        .notif-modal .notif-header .close-btn:hover { background: #f0f2f5; border-radius: 50%; }
+        .notif-modal .notif-header .mark-all {
+            background: none;
+            border: none;
+            color: #667eea;
+            font-size: 0.8rem;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .notif-modal .notif-header .mark-all:hover { text-decoration: underline; }
+
+        .notif-modal .notif-item {
+            padding: 1rem 1.2rem;
+            border-bottom: 1px solid #f3f4f6;
+            transition: all 0.3s ease;
+        }
+        .notif-modal .notif-item:hover { background: #f8f9fa; }
+        .notif-modal .notif-item.unread { background: #f0f4ff; border-left: 3px solid #667eea; }
+        .notif-modal .notif-item .notif-title { font-weight: 600; color: #1a1a2e; font-size: 0.9rem; }
+        .notif-modal .notif-item .notif-time { font-size: 0.7rem; color: #999; float: right; }
+        .notif-modal .notif-item .notif-message { font-size: 0.85rem; color: #666; margin-top: 0.25rem; }
+        .notif-modal .notif-empty { padding: 3rem; text-align: center; color: #999; }
+        .notif-modal .notif-empty .icon { font-size: 3rem; display: block; margin-bottom: 0.5rem; }
+
+        .container { max-width: 700px; margin: 0 auto; padding: 0.8rem; }
+        .post-card {
+            background: white;
+            border-radius: 14px;
+            padding: 1rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            margin-bottom: 0.8rem;
+        }
+
+        .verification-banner {
+            border-radius: 14px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        .verification-banner.pending { background: #fef3c7; border-left: 4px solid #f59e0b; }
+        .verification-banner.approved { background: #dcfce7; border-left: 4px solid #22c55e; }
+        .verification-banner.rejected { background: #fee2e2; border-left: 4px solid #ef4444; }
+        .verification-banner .icon { font-size: 1.5rem; }
+        .verification-banner .text { flex: 1; }
+        .verification-banner .text strong { display: block; color: #1a1a2e; font-size: 0.95rem; }
+        .verification-banner .text p { font-size: 0.85rem; color: #666; margin: 0; }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.6rem;
+            margin-bottom: 1rem;
+        }
+        .stat-card {
+            background: white;
+            padding: 0.8rem;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .stat-card:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.1); }
+        .stat-card .number { font-size: 1.3rem; font-weight: 700; color: #667eea; }
+        .stat-card .label { color: #666; font-size: 0.65rem; margin-top: 0.2rem; }
+
+        .welcome-banner {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 16px;
+            padding: 1.2rem 1.5rem;
+            margin-bottom: 1rem;
+            position: relative;
+            overflow: hidden;
+        }
+        .welcome-banner::after {
+            content: '👨‍🏫';
+            position: absolute;
+            right: -10px;
+            bottom: -20px;
+            font-size: 5rem;
+            opacity: 0.15;
+        }
+        .welcome-banner h2 { font-size: 1.3rem; margin-bottom: 0.1rem; }
+        .welcome-banner p { opacity: 0.9; font-size: 0.85rem; }
+        .welcome-banner .status-badge {
+            display: inline-block;
+            padding: 3px 12px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            margin-top: 0.3rem;
+        }
+        .welcome-banner .status-badge.pending { background: rgba(255,255,255,0.2); }
+        .welcome-banner .status-badge.approved { background: rgba(34,197,94,0.3); }
+        .welcome-banner .status-badge.rejected { background: rgba(239,68,68,0.3); }
+
+        .booking-item {
+            padding: 0.6rem 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .booking-item:last-child { border-bottom: none; }
+        .booking-item .student-name { font-weight: 600; color: #1a1a2e; font-size: 0.95rem; }
+        .booking-item .booking-time { font-size: 0.8rem; color: #666; }
+        .booking-item .booking-status {
+            font-size: 0.7rem;
+            padding: 2px 10px;
+            border-radius: 10px;
+            font-weight: 600;
+        }
+        .booking-item .booking-status.confirmed { background: #dbeafe; color: #1e40af; }
+        .booking-item .booking-status.completed { background: #dcfce7; color: #166534; }
+        .booking-item .booking-status.pending { background: #fef3c7; color: #92400e; }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 1rem 0 0.6rem 0;
+        }
+        .section-header h3 { color: #1a1a2e; font-size: 1.1rem; }
+        .section-header a { color: #667eea; text-decoration: none; font-size: 0.8rem; font-weight: 600; cursor: pointer; }
+        .section-header a:hover { text-decoration: underline; }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 0.5rem 1.2rem;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            font-size: 0.85rem;
+        }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(102,126,234,0.4); }
+
+        .btn-success {
+            background: #22c55e;
+            color: white;
+            border: none;
+            padding: 0.5rem 1.2rem;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            font-size: 0.85rem;
+        }
+        .btn-success:hover { background: #16a34a; transform: translateY(-2px); }
+
+        .btn-bootcamp {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+            border: none;
+            padding: 0.5rem 1.2rem;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            font-size: 0.85rem;
+        }
+        .btn-bootcamp:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(245,158,11,0.4); }
+
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 0.4rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            font-size: 0.8rem;
+        }
+        .btn-danger:hover { background: #dc2626; }
+
+        .btn-outline {
+            background: transparent;
+            color: #667eea;
+            border: 2px solid #667eea;
+            padding: 0.4rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            font-size: 0.8rem;
+        }
+        .btn-outline:hover { background: #667eea; color: white; }
+
+        .btn-sm { padding: 4px 12px; font-size: 0.75rem; }
+        .badge {
+            display: inline-block;
+            background: #22c55e;
+            color: white;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+        .badge-warning { background: #f59e0b; }
+        .badge-purple { background: #667eea; }
+        .badge-bootcamp { background: #f59e0b; }
+        .text-muted { color: #666; font-size: 0.85rem; }
+        .flex-between { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; }
+        .mt-1 { margin-top: 0.5rem; }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: white;
+            padding: 0.8rem 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            z-index: 5000;
+            animation: toastSlide 0.4s ease;
+            max-width: 90%;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+        .toast.success { background: #22c55e; }
+        .toast.error { background: #ef4444; }
+        .toast.warning { background: #f59e0b; }
+        @keyframes toastSlide { from { transform: translateX(-50%) translateY(100px); opacity: 0; } to { transform: translateX(-50%) translateY(0); opacity: 1; } }
+
+        @media (max-width: 600px) {
+            .navbar { padding: 0.4rem 0.8rem; }
+            .navbar .logo { font-size: 1.1rem; }
+            .sidebar { width: 280px; left: -280px; padding: 1rem; }
+            .stats-grid { grid-template-columns: 1fr 1fr; gap: 0.4rem; }
+            .stat-card .number { font-size: 1.1rem; }
+            .container { padding: 0.4rem; }
+            .welcome-banner h2 { font-size: 1.1rem; }
+            .verification-banner { flex-wrap: wrap; }
+        }
+
+        .sidebar::-webkit-scrollbar, .notif-modal::-webkit-scrollbar { width: 4px; }
+        .sidebar::-webkit-scrollbar-thumb, .notif-modal::-webkit-scrollbar-thumb { background: #667eea; border-radius: 4px; }
+    </style>
+</head>
+<body>
+
+    <!-- ===== LOADING SCREEN ===== -->
+    <div id="loadingScreen">
+        <div class="logo-text">👨‍🏫 Harps<span>Learn</span></div>
+        <div class="spinner-container">
+            <div class="ring"></div>
+            <div class="ring"></div>
+            <div class="ring"></div>
+        </div>
+        <p>Loading your tutor dashboard<span class="dots">...</span></p>
+    </div>
+
+    <!-- ===== MAIN CONTENT ===== -->
+    <div id="mainContent">
+
+        <div class="navbar">
+            <div class="logo" onclick="window.location.href='tutor-dashboard.html'">👨‍🏫 Harps<span>Learn</span></div>
+            <div class="right-section">
+                <button class="nav-icon" onclick="openNotifications()" id="notifBtn">
+                    🔔
+                    <span class="badge" id="notifCount">0</span>
+                </button>
+                <button class="nav-icon" onclick="window.location.href='tutor-profile.html'">👤</button>
+                <div class="avatar-icon" onclick="toggleSidebar()" id="navAvatar">👤</div>
+            </div>
+        </div>
+
+        <div class="sidebar" id="sidebar">
+            <button class="close-btn" onclick="toggleSidebar()">✕</button>
+            <div class="user-profile">
+                <div class="avatar" id="sidebarAvatar" onclick="uploadProfilePic()">👤</div>
+                <div class="name" id="sidebarName">Loading...</div>
+                <div class="email" id="sidebarEmail">loading@email.com</div>
+                <span class="badge" id="sidebarRole">Tutor</span>
+            </div>
+
+            <div class="menu-section">
+                <div class="menu-label">Main</div>
+                <button class="menu-item active" onclick="window.location.href='tutor-dashboard.html'">
+                    <span class="icon">🏠</span> Home
+                </button>
+                <button class="menu-item" onclick="window.location.href='tutor-bookings.html'">
+                    <span class="icon">📅</span> My Bookings
+                    <span class="badge-count" id="bookingCount">0</span>
+                </button>
+                <button class="menu-item" onclick="window.location.href='tutor-earnings.html'">
+                    <span class="icon">💰</span> Earnings
+                </button>
+                <button class="menu-item" onclick="window.location.href='tutor-students.html'">
+                    <span class="icon">👨‍🎓</span> My Students
+                </button>
+                <button class="menu-item" onclick="window.location.href='tutor-availability.html'">
+                    <span class="icon">🕐</span> Availability
+                </button>
+            </div>
+
+            <div class="menu-section">
+                <div class="menu-label">Teaching</div>
+                <button class="menu-item" onclick="window.location.href='tutor-bootcamp.html'">
+                    <span class="icon">📚</span> Bootcamp Courses
+                    <span class="badge-count" id="tutorBootcampCount">0</span>
+                </button>
+            </div>
+
+            <div class="menu-section">
+                <div class="menu-label">Communication</div>
+                <button class="menu-item" onclick="window.location.href='tutor-messages.html'">
+                    <span class="icon">💬</span> Messages
+                    <span class="badge-count" id="messageCount">0</span>
+                </button>
+            </div>
+
+            <div class="menu-section">
+                <div class="menu-label">Community</div>
+                <button class="menu-item" onclick="window.location.href='study-groups.html'">
+                    <span class="icon">👥</span> Tutor Community
+                </button>
+                <button class="menu-item" onclick="window.location.href='tutor-leaderboard.html'">
+                    <span class="icon">🏆</span> Leaderboard
+                </button>
+                <button class="menu-item" onclick="window.location.href='tutor-posts.html'">
+                    <span class="icon">📝</span> Posts
+                </button>
+            </div>
+
+            <div class="menu-section">
+                <div class="menu-label">Account</div>
+                <button class="menu-item" onclick="window.location.href='tutor-profile.html'">
+                    <span class="icon">👤</span> My Profile
+                    <span class="menu-arrow">›</span>
+                </button>
+                <button class="menu-item" onclick="window.location.href='tutor-settings.html'">
+                    <span class="icon">⚙️</span> Settings
+                    <span class="menu-arrow">›</span>
+                </button>
+                <button class="menu-item" onclick="window.location.href='help-support.html'">
+                    <span class="icon">❓</span> Help & Support
+                    <span class="menu-arrow">›</span>
+                </button>
+                <button class="menu-item logout" onclick="logout()">
+                    <span class="icon">🚪</span> Logout
+                </button>
+            </div>
+        </div>
+
+        <div class="notif-modal" id="notifModal">
+            <div class="notif-header">
+                <div><h3>📬 Notifications</h3></div>
+                <div style="display:flex;gap:0.5rem;align-items:center;">
+                    <button class="mark-all" onclick="markAllRead()">Mark all read</button>
+                    <button class="close-btn" onclick="closeNotifications()">✕</button>
+                </div>
+            </div>
+            <div id="notifListModal">
+                <div class="notif-empty"><span class="icon">🎉</span> No notifications yet</div>
+            </div>
+        </div>
+
+        <div class="container">
+
+            <div id="verificationBanner" class="verification-banner pending">
+                <span class="icon">⏳</span>
+                <div class="text">
+                    <strong>Verification Pending</strong>
+                    <p>Your documents are being reviewed. You'll be verified within 24-48 hours.</p>
+                </div>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card" onclick="window.location.href='tutor-students.html'">
+                    <div class="number" id="totalStudents">0</div>
+                    <div class="label">👨‍🎓 Students</div>
+                </div>
+                <div class="stat-card" onclick="window.location.href='tutor-earnings.html'">
+                    <div class="number" id="totalEarnings">₦0</div>
+                    <div class="label">💰 Earnings</div>
+                </div>
+                <div class="stat-card" onclick="window.location.href='tutor-bookings.html'">
+                    <div class="number" id="completedSessions">0</div>
+                    <div class="label">✅ Sessions</div>
+                </div>
+                <div class="stat-card" onclick="window.location.href='tutor-students.html'">
+                    <div class="number" id="tutorRating">⭐0</div>
+                    <div class="label">Rating</div>
+                </div>
+            </div>
+
+            <div class="welcome-banner">
+                <h2 id="welcomeMsg">Welcome back, Tutor! 👨‍🏫</h2>
+                <p>Manage your students and track your earnings.</p>
+                <span class="status-badge pending" id="statusBadge">⏳ Pending</span>
+            </div>
+
+            <div class="post-card">
+                <div class="flex-between">
+                    <h3 style="font-size:1rem;">📅 Today's Bookings</h3>
+                    <span class="badge badge-purple" id="todayCount">0</span>
+                </div>
+                <div id="todayBookings">
+                    <div class="text-muted" style="padding:1rem 0;text-align:center;">📭 No bookings today</div>
+                </div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.6rem;margin-bottom:0.8rem;">
+                <button onclick="window.location.href='tutor-gps-checkin.html'" class="btn-primary" style="padding:0.8rem;font-size:0.9rem;">
+                    📍 Start Class (GPS)
+                </button>
+                <button onclick="window.location.href='tutor-students.html'" class="btn-success" style="padding:0.8rem;font-size:0.9rem;">
+                    👨‍🎓 My Students
+                </button>
+                <button onclick="window.location.href='tutor-bootcamp.html'" class="btn-bootcamp" style="padding:0.8rem;font-size:0.9rem;">
+                    📚 Bootcamp
+                </button>
+            </div>
+
+            <div class="post-card">
+                <div class="flex-between">
+                    <h3 style="font-size:1rem;">📅 Upcoming Bookings</h3>
+                    <span class="badge badge-warning" id="upcomingCount">0</span>
+                </div>
+                <div id="upcomingBookings">
+                    <div class="text-muted" style="padding:1rem 0;text-align:center;">📭 No upcoming bookings</div>
+                </div>
+            </div>
+
+            <div class="post-card" style="background:linear-gradient(135deg, #fef3c7, #fde68a);border:2px solid #f59e0b;">
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;">
+                    <div>
+                        <h3 style="font-size:1rem;">📚 Holiday Bootcamp</h3>
+                        <p style="color:#666;font-size:0.85rem;">Manage your bootcamp courses and students 🇳🇬</p>
+                    </div>
+                    <button onclick="window.location.href='tutor-bootcamp.html'" class="btn-bootcamp" style="padding:0.4rem 1.2rem;font-size:0.85rem;">
+                        Manage →
+                    </button>
+                </div>
+            </div>
+
+            <div class="section-header">
+                <h3>📝 Community Posts</h3>
+                <a onclick="window.location.href='tutor-posts.html'">View all →</a>
+            </div>
+            <div id="postsFeed">
+                <div style="text-align:center;padding:1rem;color:#999;">
+                    <span style="font-size:1.5rem;display:block;margin-bottom:0.3rem;">📝</span>
+                    Loading posts...
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDy-j3_iZwv7IE7HYHircFeEWGdoGizf5M",
+            authDomain: "harpslearn.firebaseapp.com",
+            projectId: "harpslearn",
+            storageBucket: "harpslearn.firebasestorage.app",
+            messagingSenderId: "625210543198",
+            appId: "1:625210543198:web:6faebd2af1465facf338cf",
+            measurementId: "G-8Z8HVC5V5J"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        const CLOUDINARY_CONFIG = {
+            cloudName: 'dwc2sthsd',
+            unsignedPreset: 'harpslearn_unsigned'
+        };
+
+        let currentUser = null;
+        let userData = null;
+        let tutorData = null;
+        let notifications = [];
+        let bookings = [];
+        let posts = [];
+        let bootcampCourses = [];
+
+        function showToast(message, type = 'info') {
+            const existing = document.querySelector('.toast');
+            if (existing) existing.remove();
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => { toast.remove(); }, 4000);
+        }
+
+        function timeAgo(date) {
+            const seconds = Math.floor((new Date() - date) / 1000);
+            if (seconds < 60) return 'just now';
+            const minutes = Math.floor(seconds / 60);
+            if (minutes < 60) return minutes + 'm ago';
+            const hours = Math.floor(minutes / 60);
+            if (hours < 24) return hours + 'h ago';
+            const days = Math.floor(hours / 24);
+            if (days < 7) return days + 'd ago';
+            return date.toLocaleDateString();
+        }
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            sidebar.classList.toggle('open');
+            overlay.classList.toggle('active');
+        }
+
+        function uploadProfilePic() {
+            if (typeof cloudinary === 'undefined') {
+                showToast('Loading uploader...', 'warning');
+                return;
+            }
+
+            const widget = cloudinary.createUploadWidget({
+                cloudName: CLOUDINARY_CONFIG.cloudName,
+                uploadPreset: CLOUDINARY_CONFIG.unsignedPreset,
+                sources: ['local', 'camera'],
+                multiple: false,
+                maxFileSize: 2000000,
+                resourceType: 'image',
+                clientAllowedFormats: ['jpg', 'jpeg', 'png']
+            }, async (error, result) => {
+                if (error) {
+                    showToast('❌ Upload error: ' + error.message, 'error');
+                    return;
+                }
+
+                if (result && result.event === 'success') {
+                    const fileUrl = result.info.secure_url || result.info.url;
+
+                    try {
+                        const user = auth.currentUser;
+                        if (!user) return;
+
+                        await db.collection('users').doc(user.uid).update({
+                            profilePic: fileUrl
+                        });
+
+                        updateProfilePic(fileUrl);
+                        showToast('✅ Profile picture updated!', 'success');
+                    } catch (e) {
+                        showToast('Error saving: ' + e.message, 'error');
+                    }
+                }
+            });
+
+            widget.open();
+        }
+
+        function updateProfilePic(url) {
+            const sidebarAvatar = document.getElementById('sidebarAvatar');
+            sidebarAvatar.innerHTML = `<img src="${url}" alt="Profile" />`;
+            const navAvatar = document.getElementById('navAvatar');
+            navAvatar.innerHTML = `<img src="${url}" alt="Profile" />`;
+        }
+
+        // ============================================================
+        // 🔔 NOTIFICATIONS - TUTOR GETS BOOKING NOTIFICATIONS
+        // ============================================================
+
+        async function loadNotifications() {
+            try {
+                const user = auth.currentUser;
+                if (!user) return;
+
+                const snapshot = await db.collection('notifications')
+                    .where('userId', '==', user.uid)
+                    .get();
+
+                const notifs = [];
+                snapshot.forEach(doc => {
+                    notifs.push({ id: doc.id, ...doc.data() });
+                });
+
+                notifs.sort((a, b) => {
+                    const dateA = a.createdAt?.toDate?.() || new Date(0);
+                    const dateB = b.createdAt?.toDate?.() || new Date(0);
+                    return dateB - dateA;
+                });
+
+                notifications = notifs;
+
+                const unread = notifications.filter(n => !n.read).length;
+                document.getElementById('notifCount').textContent = unread;
+
+                const list = document.getElementById('notifListModal');
+                if (notifications.length === 0) {
+                    list.innerHTML = `<div class="notif-empty"><span class="icon">🎉</span> No notifications yet</div>`;
+                    return;
+                }
+
+                let html = '';
+                for (const notif of notifications) {
+                    const time = notif.createdAt?.toDate?.() || new Date();
+                    const unreadClass = notif.read ? '' : 'unread';
+                    const icon = notif.type === 'message' ? '💬' : notif.type === 'booking' ? '📅' : notif.type === 'verification' ? '✅' : '📢';
+                    html += `
+                        <div class="notif-item ${unreadClass}" onclick="markRead('${notif.id}')">
+                            <span class="notif-time">${timeAgo(time)}</span>
+                            <div class="notif-title">${icon} ${notif.title || 'Update'}</div>
+                            <div class="notif-message">${notif.message || 'No message'}</div>
+                        </div>
+                    `;
+                }
+                list.innerHTML = html;
+
+            } catch (error) {
+                console.error('Error loading notifications:', error);
+            }
+        }
+
+        function openNotifications() {
+            document.getElementById('notifModal').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeNotifications() {
+            document.getElementById('notifModal').classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        async function markRead(notifId) {
+            try {
+                await db.collection('notifications').doc(notifId).update({ read: true });
+                await loadNotifications();
+            } catch (error) {
+                console.error('Error marking read:', error);
+            }
+        }
+
+        async function markAllRead() {
+            try {
+                const unread = notifications.filter(n => !n.read);
+                for (const notif of unread) {
+                    await db.collection('notifications').doc(notif.id).update({ read: true });
+                }
+                await loadNotifications();
+                showToast('✅ All notifications marked as read', 'success');
+            } catch (error) {
+                console.error('Error marking all read:', error);
+            }
+        }
+
+        // ============================================================
+        // 👨‍🏫 LOAD TUTOR DASHBOARD
+        // ============================================================
+
+        async function loadTutorDashboard() {
+            try {
+                const user = auth.currentUser;
+                if (!user) {
+                    document.getElementById('loadingScreen').classList.add('hidden');
+                    window.location.href = 'index.html';
+                    return;
+                }
+
+                currentUser = user;
+
+                const userDoc = await db.collection('users').doc(user.uid).get();
+                userData = userDoc.data();
+
+                if (!userData || userData.role !== 'tutor') {
+                    showToast('This page is for tutors only', 'error');
+                    setTimeout(() => window.location.href = 'index.html', 1500);
+                    document.getElementById('loadingScreen').classList.add('hidden');
+                    return;
+                }
+
+                const name = userData.fullName || 'Tutor';
+                document.getElementById('sidebarName').textContent = name;
+                document.getElementById('sidebarEmail').textContent = userData.email || 'No email';
+                document.getElementById('sidebarRole').textContent = 'Tutor';
+                document.getElementById('welcomeMsg').textContent = `Welcome back, ${name}! 👨‍🏫`;
+
+                if (userData.profilePic) {
+                    updateProfilePic(userData.profilePic);
+                } else {
+                    document.getElementById('sidebarAvatar').textContent = name.charAt(0).toUpperCase();
+                    document.getElementById('navAvatar').textContent = name.charAt(0).toUpperCase();
+                }
+
+                const tutorDoc = await db.collection('tutors').doc(user.uid).get();
+                tutorData = tutorDoc.data();
+
+                if (tutorData) {
+                    document.getElementById('totalStudents').textContent = tutorData.totalStudents || 0;
+                    document.getElementById('totalEarnings').textContent = `₦${tutorData.totalEarnings || 0}`;
+                    document.getElementById('completedSessions').textContent = tutorData.completedSessions || 0;
+                    document.getElementById('tutorRating').textContent = `⭐${tutorData.rating || 0}`;
+
+                    const status = tutorData.verificationStatus || 'pending';
+                    const banner = document.getElementById('verificationBanner');
+                    banner.className = `verification-banner ${status}`;
+
+                    const statusBadge = document.getElementById('statusBadge');
+                    const statusMessages = {
+                        pending: { icon: '⏳', title: 'Verification Pending', message: 'Your documents are being reviewed. You\'ll be verified within 24-48 hours.', badge: '⏳ Pending' },
+                        approved: { icon: '✅', title: '🎉 Verified!', message: 'Your account is verified! You can now accept students and start teaching.', badge: '✅ Verified' },
+                        rejected: { icon: '❌', title: 'Verification Rejected', message: 'Your verification was not approved. Please contact support.', badge: '❌ Rejected' }
+                    };
+
+                    const info = statusMessages[status] || statusMessages.pending;
+                    banner.innerHTML = `
+                        <span class="icon">${info.icon}</span>
+                        <div class="text">
+                            <strong>${info.title}</strong>
+                            <p>${info.message}</p>
+                        </div>
+                    `;
+                    statusBadge.textContent = info.badge;
+                    statusBadge.className = `status-badge ${status}`;
+
+                    // If tutor just got verified, send notification
+                    if (status === 'approved' && tutorData.verificationNotificationSent !== true) {
+                        await sendVerificationNotification(user.uid);
+                        await db.collection('tutors').doc(user.uid).update({
+                            verificationNotificationSent: true
+                        });
+                    }
+                }
+
+                await loadNotifications();
+                await loadBookings();
+                await loadPosts();
+                await loadBootcampCourses();
+
+                setTimeout(() => {
+                    document.getElementById('loadingScreen').classList.add('hidden');
+                    document.getElementById('mainContent').classList.add('visible');
+                }, 800);
+
+            } catch (error) {
+                console.error('Error loading dashboard:', error);
+                showToast('Error loading dashboard', 'error');
+                document.getElementById('loadingScreen').classList.add('hidden');
+                document.getElementById('mainContent').classList.add('visible');
+            }
+        }
+
+        // ============================================================
+        // ✅ SEND VERIFICATION NOTIFICATION TO TUTOR
+        // ============================================================
+
+        async function sendVerificationNotification(userId) {
+            try {
+                await db.collection('notifications').add({
+                    userId: userId,
+                    title: '🎉 Account Verified!',
+                    message: 'Congratulations! Your HarpsLearn tutor account has been verified. You can now accept students and start teaching. Welcome to the team! 🚀',
+                    type: 'verification',
+                    read: false,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                console.log('✅ Verification notification sent to tutor:', userId);
+            } catch (error) {
+                console.error('Error sending verification notification:', error);
+            }
+        }
+
+        async function loadBootcampCourses() {
+            try {
+                const user = auth.currentUser;
+                if (!user) return;
+
+                const snapshot = await db.collection('bootcampCourses').get();
+                bootcampCourses = [];
+                snapshot.forEach(doc => {
+                    bootcampCourses.push({ id: doc.id, ...doc.data() });
+                });
+
+                document.getElementById('tutorBootcampCount').textContent = bootcampCourses.length || 0;
+
+            } catch (error) {
+                console.error('Error loading bootcamp courses:', error);
+            }
+        }
+
+        // ============================================================
+        // 📅 LOAD BOOKINGS
+        // ============================================================
+
+        async function loadBookings() {
+            try {
+                const user = auth.currentUser;
+                if (!user) return;
+
+                const snapshot = await db.collection('bookings')
+                    .where('tutorId', '==', user.uid)
+                    .get();
+
+                const bookingData = [];
+                snapshot.forEach(doc => {
+                    bookingData.push({ id: doc.id, ...doc.data() });
+                });
+
+                bookingData.sort((a, b) => {
+                    const dateA = new Date(a.scheduledStart || a.date || 0);
+                    const dateB = new Date(b.scheduledStart || b.date || 0);
+                    return dateA - dateB;
+                });
+
+                bookings = bookingData;
+
+                const today = new Date().toISOString().split('T')[0];
+                const todayBookings = bookings.filter(b => b.date === today);
+                const upcomingBookings = bookings.filter(b => b.date > today && b.status !== 'completed');
+
+                document.getElementById('todayCount').textContent = todayBookings.length || 0;
+                document.getElementById('bookingCount').textContent = upcomingBookings.length || 0;
+                document.getElementById('upcomingCount').textContent = upcomingBookings.length || 0;
+
+                renderTodayBookings(todayBookings);
+                renderUpcomingBookings(upcomingBookings);
+
+            } catch (error) {
+                console.error('Error loading bookings:', error);
+                document.getElementById('todayCount').textContent = '0';
+                document.getElementById('bookingCount').textContent = '0';
+                document.getElementById('upcomingCount').textContent = '0';
+                renderTodayBookings([]);
+                renderUpcomingBookings([]);
+            }
+        }
+
+        function renderTodayBookings(bookings) {
+            const container = document.getElementById('todayBookings');
+
+            if (!bookings || bookings.length === 0) {
+                container.innerHTML = `
+                    <div class="text-muted" style="padding:1rem 0;text-align:center;">📭 No bookings today</div>
+                `;
+                return;
+            }
+
+            let html = '';
+            for (const booking of bookings) {
+                const name = booking.studentName || 'Student';
+                const time = booking.time || '10:00 AM';
+                const location = booking.location || 'Online';
+                const duration = booking.duration || '1 hour';
+                const status = booking.status || 'pending';
+                const statusClass = status === 'confirmed' ? 'confirmed' : status;
+
+                html += `
+                    <div class="booking-item">
+                        <div class="flex-between">
+                            <span class="student-name">${name}</span>
+                            <span class="booking-status ${statusClass}">${status.toUpperCase()}</span>
+                        </div>
+                        <div class="booking-time">🕐 ${time} • 📍 ${location} • ${duration}</div>
+                        <button onclick="window.location.href='tutor-gps-checkin.html'" class="btn-primary btn-sm" style="margin-top:0.3rem;">
+                            📍 Start Class
+                        </button>
+                    </div>
+                `;
+            }
+            container.innerHTML = html;
+        }
+
+        function renderUpcomingBookings(bookings) {
+            const container = document.getElementById('upcomingBookings');
+
+            if (!bookings || bookings.length === 0) {
+                container.innerHTML = `
+                    <div class="text-muted" style="padding:1rem 0;text-align:center;">📭 No upcoming bookings</div>
+                `;
+                return;
+            }
+
+            let html = '';
+            for (const booking of bookings) {
+                const name = booking.studentName || 'Student';
+                const date = booking.date || 'Tomorrow';
+                const time = booking.time || '10:00 AM';
+                const location = booking.location || 'Online';
+
+                html += `
+                    <div class="booking-item">
+                        <div class="flex-between">
+                            <span class="student-name">${name}</span>
+                            <span class="badge badge-warning">${date}</span>
+                        </div>
+                        <div class="booking-time">🕐 ${time} • 📍 ${location}</div>
+                    </div>
+                `;
+            }
+            container.innerHTML = html;
+        }
+
+        // ============================================================
+        // 📝 LOAD POSTS - TUTOR CAN LIKE, COMMENT, SHARE
+        // ============================================================
+
+        async function loadPosts() {
+            try {
+                const snapshot = await db.collection('posts').get();
+
+                const postsData = [];
+                snapshot.forEach(doc => {
+                    postsData.push({ id: doc.id, ...doc.data() });
+                });
+
+                postsData.sort((a, b) => {
+                    const dateA = a.createdAt?.toDate?.() || new Date(0);
+                    const dateB = b.createdAt?.toDate?.() || new Date(0);
+                    return dateB - dateA;
+                });
+
+                posts = postsData.slice(0, 3);
+
+                renderPosts(posts);
+
+            } catch (error) {
+                console.error('Error loading posts:', error);
+                document.getElementById('postsFeed').innerHTML = `
+                    <div class="text-muted" style="padding:1rem;text-align:center;">📝 No posts yet</div>
+                `;
+            }
+        }
+
+        function renderPosts(posts) {
+            const container = document.getElementById('postsFeed');
+
+            if (!posts || posts.length === 0) {
+                container.innerHTML = `
+                    <div class="text-muted" style="padding:1rem;text-align:center;">📝 No posts yet</div>
+                `;
+                return;
+            }
+
+            let html = '';
+            for (const post of posts) {
+                const userName = post.userName || 'Tutor';
+                const avatar = post.userAvatar || userName.charAt(0).toUpperCase();
+                const time = post.createdAt?.toDate?.() || new Date();
+                const content = post.content || '';
+                const likes = post.likes || 0;
+                const comments = post.comments || 0;
+                const isLiked = likedPosts.has(post.id);
+
+                html += `
+                    <div class="post-card" style="margin-bottom:0.6rem;">
+                        <div style="display:flex;gap:0.6rem;align-items:center;margin-bottom:0.4rem;">
+                            <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#667eea,#764ba2);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:0.9rem;object-fit:cover;overflow:hidden;">
+                                ${post.userAvatar ? `<img src="${post.userAvatar}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;" />` : avatar}
+                            </div>
+                            <div>
+                                <div style="font-weight:600;color:#1a1a2e;font-size:0.9rem;">${userName}</div>
+                                <div style="font-size:0.7rem;color:#999;">${timeAgo(time)}</div>
+                            </div>
+                        </div>
+                        <div style="color:#333;font-size:0.9rem;line-height:1.5;">${content}</div>
+                        ${post.image ? `<img src="${post.image}" style="width:100%;border-radius:10px;margin-top:0.4rem;max-height:250px;object-fit:cover;cursor:pointer;" onclick="window.open('${post.image}','_blank')" />` : ''}
+                        <div style="display:flex;gap:1rem;padding-top:0.4rem;border-top:1px solid #e5e7eb;margin-top:0.4rem;flex-wrap:wrap;">
+                            <button onclick="likePostTutor('${post.id}')" style="background:none;border:none;cursor:pointer;color:${isLiked ? '#ef4444' : '#666'};font-size:0.75rem;display:flex;align-items:center;gap:4px;padding:4px 8px;border-radius:8px;transition:all 0.3s ease;">
+                                ${isLiked ? '❤️' : '🤍'} <span id="likeCount-${post.id}">${likes}</span>
+                            </button>
+                            <button onclick="commentPostTutor('${post.id}')" style="background:none;border:none;cursor:pointer;color:#666;font-size:0.75rem;display:flex;align-items:center;gap:4px;padding:4px 8px;border-radius:8px;transition:all 0.3s ease;">
+                                💬 <span id="commentCount-${post.id}">${comments}</span>
+                            </button>
+                            <button onclick="sharePostTutor('${post.id}')" style="background:none;border:none;cursor:pointer;color:#666;font-size:0.75rem;display:flex;align-items:center;gap:4px;padding:4px 8px;border-radius:8px;transition:all 0.3s ease;">
+                                ↗️ Share
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+            container.innerHTML = html;
+        }
+
+        // ============================================================
+        // ❤️ LIKE POST - TUTOR
+        // ============================================================
+
+        let likedPosts = new Set();
+
+        async function likePostTutor(postId) {
+            try {
+                const user = auth.currentUser;
+                if (!user) return;
+
+                const postRef = db.collection('posts').doc(postId);
+                const doc = await postRef.get();
+
+                if (!doc.exists) return;
+
+                const data = doc.data();
+                const likedBy = data.likedBy || [];
+
+                if (likedBy.includes(user.uid)) {
+                    await postRef.update({
+                        likes: firebase.firestore.FieldValue.increment(-1),
+                        likedBy: firebase.firestore.FieldValue.arrayRemove(user.uid)
+                    });
+                    likedPosts.delete(postId);
+                } else {
+                    await postRef.update({
+                        likes: firebase.firestore.FieldValue.increment(1),
+                        likedBy: firebase.firestore.FieldValue.arrayUnion(user.uid)
+                    });
+                    likedPosts.add(postId);
+                }
+
+                // Update count in UI
+                const countEl = document.getElementById(`likeCount-${postId}`);
+                if (countEl) {
+                    const currentCount = parseInt(countEl.textContent);
+                    countEl.textContent = likedBy.includes(user.uid) ? currentCount - 1 : currentCount + 1;
+                }
+
+                // Reload posts
+                await loadPosts();
+
+            } catch (error) {
+                console.error('Error liking post:', error);
+                showToast('Error liking post', 'error');
+            }
+        }
+
+        // ============================================================
+        // 💬 COMMENT - TUTOR
+        // ============================================================
+
+        function commentPostTutor(postId) {
+            const comment = prompt('💬 Write a comment:');
+            if (comment && comment.trim()) {
+                const user = auth.currentUser;
+                if (!user) {
+                    showToast('Please login first', 'error');
+                    return;
+                }
+
+                db.collection('comments').add({
+                    postId: postId,
+                    userId: user.uid,
+                    userName: userData?.fullName || 'Tutor',
+                    userAvatar: userData?.profilePic || '',
+                    text: comment.trim(),
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                }).then(() => {
+                    db.collection('posts').doc(postId).update({
+                        comments: firebase.firestore.FieldValue.increment(1)
+                    }).then(() => {
+                        showToast('💬 Comment added!', 'success');
+                        loadPosts();
+                    });
+                }).catch(() => {
+                    showToast('Error adding comment', 'error');
+                });
+            }
+        }
+
+        // ============================================================
+        // ↗️ SHARE - TUTOR
+        // ============================================================
+
+        function sharePostTutor(postId) {
+            const url = window.location.href + '?post=' + postId;
+            if (navigator.share) {
+                navigator.share({
+                    title: 'Check out this post on HarpsLearn!',
+                    text: '📚 Learning on HarpsLearn!',
+                    url: url
+                }).catch(() => {});
+            } else {
+                navigator.clipboard.writeText(url).then(() => {
+                    showToast('🔗 Link copied! Share with friends', 'success');
+                }).catch(() => {
+                    showToast('🔗 ' + url, 'info');
+                });
+            }
+        }
+
+        // ============================================================
+        // 🚪 LOGOUT
+        // ============================================================
+
+        async function logout() {
+            if (!confirm('Are you sure you want to logout?')) return;
+
+            try {
+                await auth.signOut();
+                showToast('👋 Logged out', 'success');
+                window.location.href = 'index.html';
+            } catch (error) {
+                showToast('❌ ' + error.message, 'error');
+            }
+        }
+
+        auth.onAuthStateChanged(user => {
+            if (!user) {
+                document.getElementById('loadingScreen').classList.add('hidden');
+                window.location.href = 'index.html';
+            } else {
+                loadTutorDashboard();
+                setInterval(loadNotifications, 30000);
+                setInterval(loadBookings, 60000);
+                setInterval(loadPosts, 60000);
+            }
+        });
+
+        console.log('👨‍🏫 Tutor Dashboard - FIXED!');
+        console.log('🔔 Booking notifications working!');
+        console.log('✅ Verification notification sent!');
+        console.log('❤️ Like, comment, share on posts!');
+    </script>
+
+</body>
+</html>

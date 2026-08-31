@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Availability - HarpsLearn</title>
+
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f0f2f5;
+            min-height: 100vh;
+        }
+
+        .navbar {
+            background: white;
+            padding: 0.6rem 1.2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        .navbar .logo {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #1a1a2e;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            cursor: pointer;
+        }
+        .navbar .logo span { color: #667eea; }
+        .navbar .back-btn {
+            background: none;
+            border: none;
+            font-size: 1.2rem;
+            cursor: pointer;
+            color: #666;
+            padding: 4px 10px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        .navbar .back-btn:hover { background: #f0f2f5; }
+
+        .container { max-width: 700px; margin: 0 auto; padding: 0.8rem; }
+
+        .page-header { margin-bottom: 1rem; }
+        .page-header h1 { font-size: 1.5rem; color: #1a1a2e; }
+        .page-header p { color: #666; font-size: 0.9rem; margin-top: 0.2rem; }
+
+        .availability-toggle {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            background: white;
+            border-radius: 14px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+        .availability-toggle .status {
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+        .availability-toggle .status.available { color: #22c55e; }
+        .availability-toggle .status.unavailable { color: #ef4444; }
+        .availability-toggle .toggle-btn {
+            margin-left: auto;
+            padding: 8px 20px;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .availability-toggle .toggle-btn.available { background: #22c55e; color: white; }
+        .availability-toggle .toggle-btn.available:hover { background: #16a34a; }
+        .availability-toggle .toggle-btn.unavailable { background: #ef4444; color: white; }
+        .availability-toggle .toggle-btn.unavailable:hover { background: #dc2626; }
+
+        .day-card {
+            background: white;
+            border-radius: 14px;
+            padding: 1rem;
+            margin-bottom: 0.6rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            transition: all 0.3s ease;
+        }
+        .day-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.1); }
+        .day-card .day-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .day-card .day-name { font-weight: 700; color: #1a1a2e; font-size: 1rem; }
+        .day-card .day-toggle {
+            width: 44px;
+            height: 24px;
+            appearance: none;
+            background: #e5e7eb;
+            border-radius: 12px;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            flex-shrink: 0;
+        }
+        .day-card .day-toggle:checked { background: #667eea; }
+        .day-card .day-toggle::before {
+            content: '';
+            position: absolute;
+            width: 18px;
+            height: 18px;
+            background: white;
+            border-radius: 50%;
+            top: 3px;
+            left: 3px;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .day-card .day-toggle:checked::before { left: 23px; }
+
+        .day-card .time-slots {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+        .day-card .time-slot {
+            padding: 4px 12px;
+            border: 2px solid #e5e7eb;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: white;
+            color: #666;
+        }
+        .day-card .time-slot:hover { border-color: #667eea; color: #667eea; }
+        .day-card .time-slot.selected { background: #667eea; color: white; border-color: #667eea; }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 0.8rem;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+            width: 100%;
+        }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(102,126,234,0.4); }
+
+        .text-muted { color: #666; font-size: 0.85rem; }
+        .mt-1 { margin-top: 0.5rem; }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: white;
+            padding: 0.8rem 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            z-index: 5000;
+            animation: toastSlide 0.4s ease;
+            max-width: 90%;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+        .toast.success { background: #22c55e; }
+        .toast.error { background: #ef4444; }
+        .toast.warning { background: #f59e0b; }
+        @keyframes toastSlide { from { transform: translateX(-50%) translateY(100px); opacity: 0; } to { transform: translateX(-50%) translateY(0); opacity: 1; } }
+
+        @media (max-width: 600px) {
+            .navbar { padding: 0.4rem 0.8rem; }
+            .navbar .logo { font-size: 1.1rem; }
+            .container { padding: 0.4rem; }
+            .day-card { padding: 0.8rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="navbar">
+        <div class="logo" onclick="window.location.href='tutor-dashboard.html'">👨‍🏫 Harps<span>Learn</span></div>
+        <button class="back-btn" onclick="window.location.href='tutor-dashboard.html'">✕</button>
+    </div>
+
+    <div class="container">
+        <div class="page-header">
+            <h1>🕐 Availability</h1>
+            <p>Set your availability schedule for students to book you.</p>
+        </div>
+
+        <div class="availability-toggle">
+            <div>
+                <div class="status available" id="statusText">🟢 Available</div>
+                <div class="text-muted">Students can book you</div>
+            </div>
+            <button class="toggle-btn available" id="statusBtn" onclick="toggleAvailability()">
+                Set Unavailable
+            </button>
+        </div>
+
+        <div id="daysList">
+            <!-- Will be populated by JS -->
+        </div>
+
+        <button class="btn-primary mt-1" onclick="saveAvailability()">💾 Save Availability</button>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDy-j3_iZwv7IE7HYHircFeEWGdoGizf5M",
+            authDomain: "harpslearn.firebaseapp.com",
+            projectId: "harpslearn",
+            storageBucket: "harpslearn.firebasestorage.app",
+            messagingSenderId: "625210543198",
+            appId: "1:625210543198:web:6faebd2af1465facf338cf",
+            measurementId: "G-8Z8HVC5V5J"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        let isAvailable = true;
+        const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+        const timeSlots = ['8:00 AM', '9:00 AM', '10:00 AM', '11:00 AM', '12:00 PM', '1:00 PM', '2:00 PM', '3:00 PM', '4:00 PM', '5:00 PM', '6:00 PM', '7:00 PM'];
+
+        function showToast(message, type = 'info') {
+            const existing = document.querySelector('.toast');
+            if (existing) existing.remove();
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => { toast.remove(); }, 4000);
+        }
+
+        function toggleAvailability() {
+            isAvailable = !isAvailable;
+            const statusText = document.getElementById('statusText');
+            const statusBtn = document.getElementById('statusBtn');
+
+            if (isAvailable) {
+                statusText.textContent = '🟢 Available';
+                statusText.className = 'status available';
+                statusBtn.textContent = 'Set Unavailable';
+                statusBtn.className = 'toggle-btn available';
+                showToast('✅ You are now available for bookings!', 'success');
+            } else {
+                statusText.textContent = '🔴 Unavailable';
+                statusText.className = 'status unavailable';
+                statusBtn.textContent = 'Set Available';
+                statusBtn.className = 'toggle-btn unavailable';
+                showToast('⏳ You are now unavailable for bookings', 'warning');
+            }
+        }
+
+        function renderDays() {
+            const container = document.getElementById('daysList');
+            let html = '';
+
+            for (const day of days) {
+                html += `
+                    <div class="day-card">
+                        <div class="day-header">
+                            <span class="day-name">${day}</span>
+                            <input type="checkbox" class="day-toggle" id="day-${day}" />
+                        </div>
+                        <div class="time-slots" id="slots-${day}">
+                            ${timeSlots.map(time => `
+                                <span class="time-slot" onclick="toggleSlot(this)">${time}</span>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+            container.innerHTML = html;
+        }
+
+        function toggleSlot(element) {
+            element.classList.toggle('selected');
+        }
+
+        function saveAvailability() {
+            const selectedDays = [];
+            const selectedSlots = {};
+
+            for (const day of days) {
+                const toggle = document.getElementById(`day-${day}`);
+                if (toggle && toggle.checked) {
+                    selectedDays.push(day);
+                    const slots = document.querySelectorAll(`#slots-${day} .time-slot.selected`);
+                    selectedSlots[day] = Array.from(slots).map(el => el.textContent);
+                }
+            }
+
+            const data = {
+                isAvailable: isAvailable,
+                days: selectedDays,
+                slots: selectedSlots,
+                updatedAt: new Date().toISOString()
+            };
+
+            // Save to Firebase
+            const user = auth.currentUser;
+            if (user) {
+                db.collection('tutors').doc(user.uid).update({
+                    availability: data
+                }).then(() => {
+                    showToast('✅ Availability saved successfully!', 'success');
+                }).catch(() => {
+                    showToast('⚠️ Availability saved locally! (Firebase update failed)', 'warning');
+                });
+            }
+
+            console.log('Availability saved:', data);
+            showToast('✅ Availability saved successfully!', 'success');
+        }
+
+        auth.onAuthStateChanged(user => {
+            if (!user) { window.location.href = 'index.html'; }
+            else { renderDays(); }
+        });
+
+        console.log('🕐 Tutor Availability loaded!');
+    </script>
+
+</body>
+</html>

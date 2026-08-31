@@ -1,0 +1,1553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>HarpsLearn - Parent</title>
+
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
+    <script src="https://upload-widget.cloudinary.com/global/all.js"></script>
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f0f2f5;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* ===== ELEGANT LOADING SCREEN ===== */
+        #loadingScreen {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.5s ease;
+        }
+        #loadingScreen .logo-text {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: white;
+            margin-bottom: 1.5rem;
+            letter-spacing: -1px;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+        #loadingScreen .logo-text span { color: #fbbf24; }
+        #loadingScreen .spinner-container {
+            width: 60px;
+            height: 60px;
+            position: relative;
+        }
+        #loadingScreen .spinner-container .ring {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 3px solid transparent;
+            border-top-color: white;
+            animation: spin 1s linear infinite;
+        }
+        #loadingScreen .spinner-container .ring:nth-child(2) {
+            width: 80%;
+            height: 80%;
+            top: 10%;
+            left: 10%;
+            border-top-color: #fbbf24;
+            animation-duration: 0.8s;
+            animation-direction: reverse;
+        }
+        #loadingScreen .spinner-container .ring:nth-child(3) {
+            width: 60%;
+            height: 60%;
+            top: 20%;
+            left: 20%;
+            border-top-color: #22c55e;
+            animation-duration: 1.2s;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        #loadingScreen p {
+            margin-top: 1.5rem;
+            color: rgba(255,255,255,0.8);
+            font-size: 0.95rem;
+            letter-spacing: 1px;
+        }
+        #loadingScreen .dots {
+            display: inline-block;
+            animation: dots 1.5s steps(4, end) infinite;
+        }
+        @keyframes dots {
+            0% { content: ''; }
+            25% { content: '.'; }
+            50% { content: '..'; }
+            75% { content: '...'; }
+        }
+        #loadingScreen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* ===== MAIN CONTENT ===== */
+        #mainContent { display: none; opacity: 0; transition: opacity 0.5s ease; }
+        #mainContent.visible { display: block; opacity: 1; }
+
+        .navbar {
+            background: white;
+            padding: 0.6rem 1.2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        .navbar .logo {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #1a1a2e;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            cursor: pointer;
+        }
+        .navbar .logo span { color: #667eea; }
+        .navbar .right-section {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .navbar .right-section .nav-icon {
+            width: 38px; height: 38px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: none;
+            border: none;
+            font-size: 1.2rem;
+            position: relative;
+        }
+        .navbar .right-section .nav-icon:hover { background: #f0f2f5; }
+        .navbar .right-section .nav-icon .badge {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            background: #ef4444;
+            color: white;
+            font-size: 0.5rem;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 10px;
+            min-width: 16px;
+            text-align: center;
+        }
+        .navbar .right-section .avatar-icon {
+            width: 34px; height: 34px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 0.9rem;
+            cursor: pointer;
+            border: 2px solid white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            object-fit: cover;
+            overflow: hidden;
+        }
+        .navbar .right-section .avatar-icon img { width: 100%; height: 100%; object-fit: cover; }
+
+        .hamburger {
+            width: 38px; height: 38px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+            background: none;
+            border: none;
+            padding: 6px;
+        }
+        .hamburger:hover { background: #f0f2f5; }
+        .hamburger span {
+            display: block;
+            width: 20px;
+            height: 2px;
+            background: #1a1a2e;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+        }
+        .hamburger.active span:nth-child(1) { transform: rotate(45deg) translate(4px, 4px); }
+        .hamburger.active span:nth-child(2) { opacity: 0; }
+        .hamburger.active span:nth-child(3) { transform: rotate(-45deg) translate(4px, -4px); }
+
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.4);
+            z-index: 2000;
+            animation: fadeIn 0.3s ease;
+        }
+        .sidebar-overlay.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: -320px;
+            width: 320px;
+            height: 100vh;
+            background: white;
+            z-index: 2001;
+            transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 4px 0 20px rgba(0,0,0,0.1);
+            overflow-y: auto;
+            padding: 1.5rem;
+        }
+        .sidebar.open { left: 0; }
+        .sidebar .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #666;
+            float: right;
+            padding: 4px 8px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        .sidebar .close-btn:hover { background: #f0f2f5; }
+
+        .sidebar .user-profile {
+            text-align: center;
+            padding: 1rem 0 1.5rem 0;
+            border-bottom: 1px solid #e5e7eb;
+            margin-bottom: 1rem;
+        }
+        .sidebar .user-profile .avatar {
+            width: 80px; height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 2rem;
+            font-weight: 700;
+            margin: 0 auto 0.75rem auto;
+            border: 3px solid white;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            object-fit: cover;
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .sidebar .user-profile .avatar:hover { transform: scale(1.05); }
+        .sidebar .user-profile .avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .sidebar .user-profile .name { font-weight: 700; font-size: 1.1rem; color: #1a1a2e; }
+        .sidebar .user-profile .email { color: #666; font-size: 0.8rem; }
+        .sidebar .user-profile .badge {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 2px 12px;
+            border-radius: 12px;
+            font-size: 0.65rem;
+            font-weight: 600;
+            margin-top: 4px;
+        }
+
+        .sidebar .menu-section { margin-bottom: 1.2rem; }
+        .sidebar .menu-section .menu-label {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            color: #999;
+            font-weight: 700;
+            letter-spacing: 1px;
+            margin-bottom: 0.4rem;
+            padding: 0 0.5rem;
+        }
+        .sidebar .menu-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.6rem 0.8rem;
+            border-radius: 10px;
+            color: #444;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            font-weight: 500;
+            border: none;
+            background: none;
+            width: 100%;
+            text-align: left;
+            font-size: 0.9rem;
+        }
+        .sidebar .menu-item:hover { background: #f0f2f5; color: #667eea; }
+        .sidebar .menu-item.active { background: #667eea; color: white; }
+        .sidebar .menu-item .icon { font-size: 1.1rem; width: 24px; text-align: center; }
+        .sidebar .menu-item .badge-count {
+            margin-left: auto;
+            background: #ef4444;
+            color: white;
+            font-size: 0.55rem;
+            padding: 2px 8px;
+            border-radius: 10px;
+        }
+        .sidebar .menu-item.logout {
+            color: #ef4444;
+            margin-top: 0.5rem;
+            border-top: 1px solid #e5e7eb;
+            padding-top: 0.8rem;
+        }
+        .sidebar .menu-item.logout:hover { background: #fee2e2; color: #dc2626; }
+        .sidebar .menu-item .menu-arrow { margin-left: auto; color: #ccc; font-size: 0.7rem; }
+
+        /* ===== NOTIFICATION MODAL ===== */
+        .notif-modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: white;
+            z-index: 3000;
+            animation: slideUp 0.3s ease;
+            overflow-y: auto;
+        }
+        .notif-modal.active { display: block; }
+        @keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+        .notif-modal .notif-header {
+            padding: 1rem 1.2rem;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            background: white;
+            z-index: 10;
+        }
+        .notif-modal .notif-header h3 { font-size: 1.2rem; color: #1a1a2e; }
+        .notif-modal .notif-header .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #666;
+            padding: 4px 8px;
+        }
+        .notif-modal .notif-header .close-btn:hover { background: #f0f2f5; border-radius: 50%; }
+        .notif-modal .notif-header .mark-all {
+            background: none;
+            border: none;
+            color: #667eea;
+            font-size: 0.8rem;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .notif-modal .notif-header .mark-all:hover { text-decoration: underline; }
+
+        .notif-modal .notif-item {
+            padding: 1rem 1.2rem;
+            border-bottom: 1px solid #f3f4f6;
+            transition: all 0.3s ease;
+        }
+        .notif-modal .notif-item:hover { background: #f8f9fa; }
+        .notif-modal .notif-item.unread { background: #f0f4ff; border-left: 3px solid #667eea; }
+        .notif-modal .notif-item .notif-title { font-weight: 600; color: #1a1a2e; font-size: 0.9rem; }
+        .notif-modal .notif-item .notif-time { font-size: 0.7rem; color: #999; float: right; }
+        .notif-modal .notif-item .notif-message { font-size: 0.85rem; color: #666; margin-top: 0.25rem; }
+        .notif-modal .notif-empty { padding: 3rem; text-align: center; color: #999; }
+        .notif-modal .notif-empty .icon { font-size: 3rem; display: block; margin-bottom: 0.5rem; }
+
+        .container { max-width: 700px; margin: 0 auto; padding: 0.8rem; }
+
+        .post-card {
+            background: white;
+            border-radius: 14px;
+            padding: 1rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            margin-bottom: 0.8rem;
+        }
+
+        .welcome-banner {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 16px;
+            padding: 1.2rem 1.5rem;
+            margin-bottom: 1rem;
+            position: relative;
+            overflow: hidden;
+        }
+        .welcome-banner::after {
+            content: '👪';
+            position: absolute;
+            right: -10px;
+            bottom: -20px;
+            font-size: 5rem;
+            opacity: 0.15;
+        }
+        .welcome-banner h2 { font-size: 1.3rem; margin-bottom: 0.1rem; }
+        .welcome-banner p { opacity: 0.9; font-size: 0.85rem; }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.6rem;
+            margin-bottom: 1rem;
+        }
+        .stat-card {
+            background: white;
+            padding: 0.8rem;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .stat-card:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.1); }
+        .stat-card .number { font-size: 1.5rem; font-weight: 700; color: #667eea; }
+        .stat-card .label { color: #666; font-size: 0.7rem; margin-top: 0.2rem; }
+
+        .child-card {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 12px;
+            margin-bottom: 0.75rem;
+            transition: all 0.3s ease;
+            border: 1px solid #e5e7eb;
+        }
+        .child-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        .child-card .child-name { font-weight: 600; color: #1a1a2e; font-size: 1rem; }
+        .child-card .child-details { color: #666; font-size: 0.8rem; margin: 0.25rem 0; }
+        .child-card .progress-text { font-size: 0.8rem; color: #667eea; font-weight: 600; }
+        .progress-bar { width: 100%; height: 6px; background: #e5e7eb; border-radius: 4px; margin-top: 0.4rem; overflow: hidden; }
+        .progress-bar .fill { height: 100%; background: linear-gradient(90deg, #667eea, #764ba2); border-radius: 4px; transition: width 0.5s ease; }
+
+        .link-child-section {
+            background: #f0f2f5;
+            padding: 1rem;
+            border-radius: 12px;
+            margin: 0.5rem 0;
+        }
+        .link-child-section input {
+            width: 100%;
+            padding: 10px 14px;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            font-size: 1rem;
+            text-align: center;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            font-size: 1.1rem;
+        }
+        .link-child-section input:focus { outline: none; border-color: #667eea; }
+
+        .secret-box {
+            background: #f8f9fa;
+            padding: 0.8rem;
+            border-radius: 10px;
+            text-align: center;
+            margin: 0.5rem 0;
+            border: 2px dashed #e5e7eb;
+        }
+        .secret-box code {
+            font-size: 1.1rem;
+            letter-spacing: 2px;
+            font-weight: bold;
+            color: #764ba2;
+            background: white;
+            padding: 0.4rem 1rem;
+            border-radius: 6px;
+            display: inline-block;
+            margin: 0.3rem 0;
+            border: 1px solid #e5e7eb;
+            word-break: break-all;
+        }
+
+        .report-toggle {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.5rem 0;
+        }
+        .report-toggle input[type="checkbox"] {
+            width: 48px;
+            height: 24px;
+            appearance: none;
+            background: #e5e7eb;
+            border-radius: 12px;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            flex-shrink: 0;
+        }
+        .report-toggle input[type="checkbox"]:checked { background: #667eea; }
+        .report-toggle input[type="checkbox"]::before {
+            content: '';
+            position: absolute;
+            width: 18px;
+            height: 18px;
+            background: white;
+            border-radius: 50%;
+            top: 3px;
+            left: 3px;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .report-toggle input[type="checkbox"]:checked::before { left: 27px; }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 0.5rem 1.2rem;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            font-size: 0.85rem;
+        }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(102,126,234,0.4); }
+
+        .btn-success {
+            background: #22c55e;
+            color: white;
+            border: none;
+            padding: 0.5rem 1.2rem;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            font-size: 0.85rem;
+        }
+        .btn-success:hover { background: #16a34a; transform: translateY(-2px); }
+
+        .btn-outline {
+            background: transparent;
+            color: #667eea;
+            border: 2px solid #667eea;
+            padding: 0.4rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            font-size: 0.8rem;
+        }
+        .btn-outline:hover { background: #667eea; color: white; }
+
+        .btn-sm { padding: 4px 12px; font-size: 0.75rem; }
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 0.4rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            font-size: 0.8rem;
+        }
+        .btn-danger:hover { background: #dc2626; }
+
+        .badge {
+            display: inline-block;
+            background: #22c55e;
+            color: white;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+        .badge-warning { background: #f59e0b; }
+        .badge-purple { background: #667eea; }
+        .text-muted { color: #666; font-size: 0.85rem; }
+        .flex-between { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; }
+        .mt-1 { margin-top: 0.5rem; }
+        .mt-2 { margin-top: 1rem; }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: white;
+            padding: 0.8rem 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            z-index: 5000;
+            animation: toastSlide 0.4s ease;
+            max-width: 90%;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+        .toast.success { background: #22c55e; }
+        .toast.error { background: #ef4444; }
+        .toast.warning { background: #f59e0b; }
+        @keyframes toastSlide { from { transform: translateX(-50%) translateY(100px); opacity: 0; } to { transform: translateX(-50%) translateY(0); opacity: 1; } }
+
+        /* ===== MODAL FOR POST VIEWING ===== */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 4000;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            animation: fadeIn 0.3s ease;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal-overlay .modal {
+            background: white;
+            border-radius: 20px;
+            padding: 1.5rem;
+            max-width: 500px;
+            width: 100%;
+            max-height: 80vh;
+            overflow-y: auto;
+            animation: slideUp 0.3s ease;
+        }
+        .modal-overlay .modal .modal-close {
+            float: right;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #999;
+            padding: 0 4px;
+        }
+        .modal-overlay .modal .modal-close:hover { color: #333; }
+
+        @media (max-width: 600px) {
+            .navbar { padding: 0.4rem 0.8rem; }
+            .navbar .logo { font-size: 1.1rem; }
+            .sidebar { width: 280px; left: -280px; padding: 1rem; }
+            .stats-grid { grid-template-columns: 1fr 1fr; gap: 0.4rem; }
+            .stat-card .number { font-size: 1.2rem; }
+            .container { padding: 0.4rem; }
+            .welcome-banner h2 { font-size: 1.1rem; }
+        }
+
+        .sidebar::-webkit-scrollbar, .notif-modal::-webkit-scrollbar, .modal-overlay .modal::-webkit-scrollbar { width: 4px; }
+        .sidebar::-webkit-scrollbar-thumb, .notif-modal::-webkit-scrollbar-thumb, .modal-overlay .modal::-webkit-scrollbar-thumb { background: #667eea; border-radius: 4px; }
+    </style>
+</head>
+<body>
+
+    <!-- ===== LOADING SCREEN ===== -->
+    <div id="loadingScreen">
+        <div class="logo-text">👪 Harps<span>Learn</span></div>
+        <div class="spinner-container">
+            <div class="ring"></div>
+            <div class="ring"></div>
+            <div class="ring"></div>
+        </div>
+        <p>Loading your parent dashboard<span class="dots">...</span></p>
+    </div>
+
+    <!-- ===== MAIN CONTENT ===== -->
+    <div id="mainContent">
+
+        <!-- ===== TOP NAVBAR ===== -->
+        <div class="navbar">
+            <div class="logo" onclick="window.location.href='parent-dashboard.html'">👪 Harps<span>Learn</span></div>
+            <div class="right-section">
+                <button class="nav-icon" onclick="openNotifications()" id="notifBtn">
+                    🔔
+                    <span class="badge" id="notifCount">0</span>
+                </button>
+                <button class="nav-icon" onclick="window.location.href='parent-profile.html'">👤</button>
+                <div class="avatar-icon" onclick="toggleSidebar()" id="navAvatar">👤</div>
+            </div>
+        </div>
+
+        <!-- ===== SIDEBAR ===== -->
+        <div class="sidebar-overlay" onclick="toggleSidebar()" id="sidebarOverlay"></div>
+        <div class="sidebar" id="sidebar">
+            <button class="close-btn" onclick="toggleSidebar()">✕</button>
+            <div class="user-profile">
+                <div class="avatar" id="sidebarAvatar" onclick="uploadProfilePic()">👤</div>
+                <div class="name" id="sidebarName">Loading...</div>
+                <div class="email" id="sidebarEmail">loading@email.com</div>
+                <span class="badge" id="sidebarRole">Parent</span>
+            </div>
+
+            <div class="menu-section">
+                <div class="menu-label">Main</div>
+                <button class="menu-item active" onclick="window.location.href='parent-dashboard.html'">
+                    <span class="icon">🏠</span> Home
+                </button>
+                <button class="menu-item" onclick="window.location.href='parent-children.html'">
+                    <span class="icon">👨‍👧</span> My Children
+                    <span class="badge-count" id="childCount">0</span>
+                </button>
+                <button class="menu-item" onclick="window.location.href='parent-tutors.html'">
+                    <span class="icon">👨‍🏫</span> Find Tutors
+                </button>
+                <button class="menu-item" onclick="window.location.href='parent-reports.html'">
+                    <span class="icon">📊</span> Reports
+                </button>
+                <button class="menu-item" onclick="window.location.href='parent-messages.html'">
+                    <span class="icon">💬</span> Messages
+                    <span class="badge-count" id="messageCount">0</span>
+                </button>
+                <button class="menu-item" onclick="window.location.href='subscription.html'">
+                    <span class="icon">💰</span> Payments
+                </button>
+            </div>
+
+            <div class="menu-section">
+                <div class="menu-label">Account</div>
+                <button class="menu-item" onclick="window.location.href='parent-profile.html'">
+                    <span class="icon">👤</span> My Profile
+                    <span class="menu-arrow">›</span>
+                </button>
+                <button class="menu-item" onclick="window.location.href='parent-settings.html'">
+                    <span class="icon">⚙️</span> Settings
+                    <span class="menu-arrow">›</span>
+                </button>
+                <button class="menu-item" onclick="window.location.href='help-support.html'">
+                    <span class="icon">❓</span> Help & Support
+                    <span class="menu-arrow">›</span>
+                </button>
+                <button class="menu-item logout" onclick="logout()">
+                    <span class="icon">🚪</span> Logout
+                </button>
+            </div>
+        </div>
+
+        <!-- ===== NOTIFICATION MODAL ===== -->
+        <div class="notif-modal" id="notifModal">
+            <div class="notif-header">
+                <div><h3>📬 Notifications</h3></div>
+                <div style="display:flex;gap:0.5rem;align-items:center;">
+                    <button class="mark-all" onclick="markAllRead()">Mark all read</button>
+                    <button class="close-btn" onclick="closeNotifications()">✕</button>
+                </div>
+            </div>
+            <div id="notifListModal">
+                <div class="notif-empty"><span class="icon">🎉</span> No notifications yet</div>
+            </div>
+        </div>
+
+        <!-- ===== MAIN CONTENT ===== -->
+        <div class="container">
+
+            <!-- Welcome -->
+            <div class="welcome-banner">
+                <h2 id="welcomeMsg">Welcome back, Parent! 👪</h2>
+                <p>Monitor your child's progress and performance.</p>
+            </div>
+
+            <!-- Stats -->
+            <div class="stats-grid">
+                <div class="stat-card" onclick="window.location.href='parent-children.html'">
+                    <div class="number" id="childrenCount">0</div>
+                    <div class="label">👨‍👧 Children</div>
+                </div>
+                <div class="stat-card" onclick="window.location.href='parent-reports.html'">
+                    <div class="number" id="avgScore">0%</div>
+                    <div class="label">📊 Avg Score</div>
+                </div>
+            </div>
+
+            <!-- Link Child -->
+            <div class="post-card">
+                <h3 style="font-size:1rem;">🔗 Link Your Child</h3>
+                <p class="text-muted">Enter your child's 16-character secret key to track their progress</p>
+                <div class="link-child-section">
+                    <input type="text" id="secretKeyInput" placeholder="Enter child's secret key (16 chars)" maxlength="16" />
+                    <button onclick="linkChild()" class="btn-primary" style="width:100%;margin-top:0.5rem;padding:0.6rem;">
+                        🔗 Link Child
+                    </button>
+                </div>
+            </div>
+
+            <!-- Children Progress - REAL DATA -->
+            <div id="childrenSection">
+                <div class="flex-between">
+                    <h3 style="font-size:1rem;color:#1a1a2e;">📊 Your Children's Progress</h3>
+                    <span class="badge badge-purple" id="childrenBadge">0</span>
+                </div>
+                <div id="childrenList">
+                    <div class="text-muted" style="padding:1rem 0;text-align:center;">
+                        📭 No children linked yet. Ask your child for their secret key.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Weekly Report Toggle -->
+            <div class="post-card">
+                <h3 style="font-size:1rem;">📬 Weekly Reports</h3>
+                <p class="text-muted">Get weekly progress reports via SMS/WhatsApp</p>
+                <div class="report-toggle">
+                    <input type="checkbox" id="reportToggle" onchange="toggleReport()" />
+                    <label for="reportToggle" style="font-weight:600;font-size:0.9rem;">Enable Weekly Reports</label>
+                </div>
+                <div style="font-size:0.8rem;color:#666;margin-top:0.25rem;">
+                    📱 Reports will be sent to your registered phone number
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.6rem;margin-bottom:0.8rem;">
+                <button onclick="window.location.href='parent-tutors.html'" class="btn-primary" style="padding:0.8rem;font-size:0.9rem;">
+                    👨‍🏫 Find Tutors
+                </button>
+                <button onclick="window.location.href='parent-messages.html'" class="btn-success" style="padding:0.8rem;font-size:0.9rem;background:#22c55e;color:white;border:none;border-radius:10px;cursor:pointer;font-weight:600;">
+                    💬 Messages
+                </button>
+                <button onclick="window.location.href='subscription.html'" class="btn-outline" style="padding:0.8rem;font-size:0.9rem;border:2px solid #667eea;color:#667eea;background:transparent;border-radius:10px;cursor:pointer;font-weight:600;">
+                    💎 Premium
+                </button>
+            </div>
+
+            <!-- Recent Activity -->
+            <div class="post-card">
+                <div class="flex-between">
+                    <h3 style="font-size:1rem;">📋 Recent Activity</h3>
+                    <a onclick="window.location.href='parent-reports.html'" style="color:#667eea;font-size:0.8rem;cursor:pointer;font-weight:600;">View all →</a>
+                </div>
+                <div id="recentActivity">
+                    <div class="text-muted" style="padding:0.5rem 0;text-align:center;">No recent activity</div>
+                </div>
+            </div>
+
+            <!-- ===== MODERATION ALERT - NEW VERSION ===== -->
+            <div id="moderationAlert" class="post-card" style="display:none;background:#fef3c7;border:2px solid #f59e0b;">
+                <div class="flex-between">
+                    <div>
+                        <h3 style="font-size:1rem;">⚠️ Content Alert</h3>
+                        <p style="color:#666;font-size:0.85rem;" id="moderationMessage">Your child's post needs attention</p>
+                    </div>
+                    <button onclick="openModerationPost()" class="btn-primary" style="padding:0.3rem 1rem;font-size:0.8rem;">👁️ View Post</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ===== MODAL FOR POST VIEWING (added) ===== -->
+    <div class="modal-overlay" id="tutorProfileModal">
+        <div class="modal">
+            <button class="modal-close" onclick="closeTutorProfile()">✕</button>
+            <div id="tutorProfileContent">
+                <!-- Post content will be injected here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================================
+        // 🔥 FIREBASE CONFIG
+        // ============================================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyDy-j3_iZwv7IE7HYHircFeEWGdoGizf5M",
+            authDomain: "harpslearn.firebaseapp.com",
+            projectId: "harpslearn",
+            storageBucket: "harpslearn.firebasestorage.app",
+            messagingSenderId: "625210543198",
+            appId: "1:625210543198:web:6faebd2af1465facf338cf",
+            measurementId: "G-8Z8HVC5V5J"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        const CLOUDINARY_CONFIG = {
+            cloudName: 'dwc2sthsd',
+            unsignedPreset: 'harpslearn_unsigned'
+        };
+
+        let currentUser = null;
+        let userData = null;
+        let parentData = null;
+        let linkedChildren = [];
+        let notifications = [];
+        let messages = [];
+        let moderationPostData = null;  // stores the post to be viewed
+
+        function showToast(message, type = 'info') {
+            const existing = document.querySelector('.toast');
+            if (existing) existing.remove();
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => { toast.remove(); }, 4000);
+        }
+
+        function generateKey() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let key = '';
+            for (let i = 0; i < 16; i++) {
+                key += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return key;
+        }
+
+        function timeAgo(date) {
+            const seconds = Math.floor((new Date() - date) / 1000);
+            if (seconds < 60) return 'just now';
+            const minutes = Math.floor(seconds / 60);
+            if (minutes < 60) return minutes + 'm ago';
+            const hours = Math.floor(minutes / 60);
+            if (hours < 24) return hours + 'h ago';
+            const days = Math.floor(hours / 24);
+            if (days < 7) return days + 'd ago';
+            return date.toLocaleDateString();
+        }
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            sidebar.classList.toggle('open');
+            overlay.classList.toggle('active');
+        }
+
+        function uploadProfilePic() {
+            if (typeof cloudinary === 'undefined') {
+                showToast('Loading uploader...', 'warning');
+                return;
+            }
+
+            const widget = cloudinary.createUploadWidget({
+                cloudName: CLOUDINARY_CONFIG.cloudName,
+                uploadPreset: CLOUDINARY_CONFIG.unsignedPreset,
+                sources: ['local', 'camera'],
+                multiple: false,
+                maxFileSize: 2000000,
+                resourceType: 'image',
+                clientAllowedFormats: ['jpg', 'jpeg', 'png']
+            }, async (error, result) => {
+                if (error) {
+                    showToast('❌ Upload error: ' + error.message, 'error');
+                    return;
+                }
+
+                if (result && result.event === 'success') {
+                    const fileUrl = result.info.secure_url || result.info.url;
+
+                    try {
+                        const user = auth.currentUser;
+                        if (!user) return;
+
+                        await db.collection('users').doc(user.uid).update({
+                            profilePic: fileUrl
+                        });
+
+                        updateProfilePic(fileUrl);
+                        showToast('✅ Profile picture updated!', 'success');
+                    } catch (e) {
+                        showToast('Error saving: ' + e.message, 'error');
+                    }
+                }
+            });
+
+            widget.open();
+        }
+
+        function updateProfilePic(url) {
+            const sidebarAvatar = document.getElementById('sidebarAvatar');
+            sidebarAvatar.innerHTML = `<img src="${url}" alt="Profile" />`;
+            const navAvatar = document.getElementById('navAvatar');
+            navAvatar.innerHTML = `<img src="${url}" alt="Profile" />`;
+        }
+
+        // ============================================================
+        // 📝 OPEN MODERATION POST - Shows the actual post
+        // ============================================================
+
+        async function openModerationPost() {
+            try {
+                console.log('openModerationPost called, moderationPostData:', moderationPostData);
+                if (!moderationPostData) {
+                    showToast('No post to view. Please check the notification.', 'warning');
+                    return;
+                }
+
+                const post = moderationPostData;
+                const content = post.content || 'No content';
+                const image = post.image ? `<img src="${post.image}" style="width:100%;border-radius:10px;margin-top:0.5rem;max-height:300px;object-fit:cover;" />` : '';
+                const userName = post.userName || 'Child';
+                const status = post.moderationStatus || 'pending';
+                const reason = post.moderationReason || 'No reason provided';
+                const time = post.createdAt?.toDate?.() || new Date();
+
+                const modalContent = document.getElementById('tutorProfileContent');
+                if (modalContent) {
+                    modalContent.innerHTML = `
+                        <div style="padding:0.5rem 0;">
+                            <div style="display:flex;gap:0.6rem;align-items:center;margin-bottom:0.5rem;">
+                                <div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#667eea,#764ba2);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:1rem;">
+                                    ${post.userAvatar ? `<img src="${post.userAvatar}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;" />` : post.userName?.charAt(0).toUpperCase() || '👤'}
+                                </div>
+                                <div>
+                                    <div style="font-weight:600;color:#1a1a2e;">${userName}</div>
+                                    <div style="font-size:0.7rem;color:#999;">${timeAgo(time)}</div>
+                                </div>
+                            </div>
+                            <div style="padding:0.5rem;background:#f8f9fa;border-radius:8px;margin:0.5rem 0;">
+                                <div style="font-size:0.7rem;color:#666;">Status: <span style="font-weight:600;color:${status === 'approved' ? '#22c55e' : status === 'rejected' ? '#ef4444' : '#f59e0b'};">${status.toUpperCase()}</span></div>
+                                ${status === 'rejected' ? `<div style="font-size:0.85rem;color:#ef4444;margin-top:0.2rem;">❌ Reason: ${reason}</div>` : ''}
+                            </div>
+                            <div style="font-size:0.95rem;color:#333;line-height:1.6;">${content}</div>
+                            ${image}
+                            <div style="margin-top:1rem;display:flex;gap:0.5rem;">
+                                <button onclick="closeTutorProfile()" style="flex:1;padding:0.6rem;background:#667eea;color:white;border:none;border-radius:10px;font-weight:600;cursor:pointer;">Close</button>
+                                ${status === 'rejected' ? `<button onclick="window.location.href='parent-messages.html'" style="flex:1;padding:0.6rem;background:#22c55e;color:white;border:none;border-radius:10px;font-weight:600;cursor:pointer;">💬 Message Tutor</button>` : ''}
+                            </div>
+                        </div>
+                    `;
+                    document.getElementById('tutorProfileModal').classList.add('active');
+                    document.body.style.overflow = 'hidden';
+                } else {
+                    // Fallback to toast
+                    showToast(
+                        `📝 Post from ${userName}\n` +
+                        `📅 ${time.toLocaleDateString()}\n` +
+                        `📊 Status: ${status.toUpperCase()}\n` +
+                        `📝 Reason: ${reason}\n\n` +
+                        `${content}`,
+                        'warning'
+                    );
+                }
+
+            } catch (error) {
+                console.error('Error opening moderation post:', error);
+                showToast('Error loading post', 'error');
+            }
+        }
+
+        function closeTutorProfile() {
+            document.getElementById('tutorProfileModal').classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        // ============================================================
+        // 🔔 NOTIFICATIONS - UPDATED
+        // ============================================================
+
+        async function loadNotifications() {
+            try {
+                const user = auth.currentUser;
+                if (!user) return;
+
+                const snapshot = await db.collection('notifications')
+                    .where('userId', '==', user.uid)
+                    .get();
+
+                const notifs = [];
+                snapshot.forEach(doc => {
+                    notifs.push({ id: doc.id, ...doc.data() });
+                });
+
+                notifs.sort((a, b) => {
+                    const dateA = a.createdAt?.toDate?.() || new Date(0);
+                    const dateB = b.createdAt?.toDate?.() || new Date(0);
+                    return dateB - dateA;
+                });
+
+                notifications = notifs;
+                const unread = notifications.filter(n => !n.read).length;
+                document.getElementById('notifCount').textContent = unread;
+
+                // Check for moderation alerts
+                const moderationNotifs = notifications.filter(n => n.type === 'moderation' || n.title?.includes('Post'));
+                if (moderationNotifs.length > 0) {
+                    document.getElementById('moderationAlert').style.display = 'block';
+                    const latest = moderationNotifs[0];
+                    document.getElementById('moderationMessage').textContent = latest.message || 'Your child has a post that needs attention.';
+                    
+                    // Store the actual post data
+                    if (latest.postId) {
+                        const postDoc = await db.collection('posts').doc(latest.postId).get();
+                        if (postDoc.exists) {
+                            moderationPostData = { id: latest.postId, ...postDoc.data() };
+                            console.log('✅ Moderation post loaded:', moderationPostData);
+                        } else {
+                            console.warn('Post not found for ID:', latest.postId);
+                            moderationPostData = null;
+                        }
+                    } else {
+                        console.warn('Notification does not have postId:', latest);
+                        moderationPostData = null;
+                    }
+                } else {
+                    document.getElementById('moderationAlert').style.display = 'none';
+                    moderationPostData = null;
+                }
+
+                // Build notification list
+                const list = document.getElementById('notifListModal');
+                if (notifications.length === 0) {
+                    list.innerHTML = `<div class="notif-empty"><span class="icon">🎉</span> No notifications yet</div>`;
+                    return;
+                }
+
+                let html = '';
+                for (const notif of notifications) {
+                    const time = notif.createdAt?.toDate?.() || new Date();
+                    const unreadClass = notif.read ? '' : 'unread';
+                    const icon = notif.type === 'message' ? '💬' : 
+                                notif.type === 'moderation' ? '⚠️' : 
+                                notif.type === 'premium' ? '💎' : 
+                                notif.type === 'booking' ? '📅' : '📢';
+                    html += `
+                        <div class="notif-item ${unreadClass}" onclick="markRead('${notif.id}')">
+                            <span class="notif-time">${timeAgo(time)}</span>
+                            <div class="notif-title">${icon} ${notif.title || 'Update'}</div>
+                            <div class="notif-message">${notif.message || 'No message'}</div>
+                            ${notif.type === 'message' ? `<div style="font-size:0.7rem;color:#667eea;margin-top:0.2rem;">💬 From: ${notif.senderName || 'Someone'}</div>` : ''}
+                        </div>
+                    `;
+                }
+                list.innerHTML = html;
+
+            } catch (error) {
+                console.error('Error loading notifications:', error);
+            }
+        }
+
+        function openNotifications() {
+            document.getElementById('notifModal').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeNotifications() {
+            document.getElementById('notifModal').classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        async function markRead(notifId) {
+            try {
+                await db.collection('notifications').doc(notifId).update({ read: true });
+                await loadNotifications();
+            } catch (error) {
+                console.error('Error marking read:', error);
+            }
+        }
+
+        async function markAllRead() {
+            try {
+                const unread = notifications.filter(n => !n.read);
+                for (const notif of unread) {
+                    await db.collection('notifications').doc(notif.id).update({ read: true });
+                }
+                await loadNotifications();
+                showToast('✅ All notifications marked as read', 'success');
+            } catch (error) {
+                console.error('Error marking all read:', error);
+            }
+        }
+
+        // ============================================================
+        // 💬 LOAD MESSAGES
+        // ============================================================
+
+        async function loadMessages() {
+            try {
+                const user = auth.currentUser;
+                if (!user) return;
+
+                const snapshot = await db.collection('messages')
+                    .where('parentId', '==', user.uid)
+                    .where('read', '==', false)
+                    .get();
+
+                const unreadCount = snapshot.size;
+                document.getElementById('messageCount').textContent = unreadCount;
+
+            } catch (error) {
+                console.error('Error loading messages:', error);
+            }
+        }
+
+        // ============================================================
+        // 👪 LOAD PARENT DASHBOARD
+        // ============================================================
+
+        async function loadParentDashboard() {
+            try {
+                const user = auth.currentUser;
+                if (!user) {
+                    document.getElementById('loadingScreen').classList.add('hidden');
+                    window.location.href = 'index.html';
+                    return;
+                }
+
+                currentUser = user;
+
+                const userDoc = await db.collection('users').doc(user.uid).get();
+                userData = userDoc.data();
+
+                if (!userData || userData.role !== 'parent') {
+                    showToast('This page is for parents only', 'error');
+                    setTimeout(() => window.location.href = 'index.html', 1500);
+                    document.getElementById('loadingScreen').classList.add('hidden');
+                    return;
+                }
+
+                const name = userData.fullName || 'Parent';
+                document.getElementById('sidebarName').textContent = name;
+                document.getElementById('sidebarEmail').textContent = userData.email || 'No email';
+                document.getElementById('sidebarRole').textContent = 'Parent';
+                document.getElementById('welcomeMsg').textContent = `Welcome back, ${name}! 👪`;
+
+                if (userData.profilePic) {
+                    updateProfilePic(userData.profilePic);
+                } else {
+                    document.getElementById('sidebarAvatar').textContent = name.charAt(0).toUpperCase();
+                    document.getElementById('navAvatar').textContent = name.charAt(0).toUpperCase();
+                }
+
+                const parentDoc = await db.collection('parents').doc(user.uid).get();
+                parentData = parentDoc.data();
+
+                if (parentData && parentData.reportEnabled) {
+                    document.getElementById('reportToggle').checked = true;
+                }
+
+                await loadLinkedChildren(user.uid);
+                await loadNotifications();
+                await loadMessages();
+                await loadRecentActivity();
+
+                setTimeout(() => {
+                    document.getElementById('loadingScreen').classList.add('hidden');
+                    document.getElementById('mainContent').classList.add('visible');
+                }, 800);
+
+            } catch (error) {
+                console.error('Error loading dashboard:', error);
+                showToast('Error loading dashboard', 'error');
+                document.getElementById('loadingScreen').classList.add('hidden');
+                document.getElementById('mainContent').classList.add('visible');
+            }
+        }
+
+        // ============================================================
+        // 👨‍👧 LOAD LINKED CHILDREN - REAL DATA FROM FIREBASE
+        // ============================================================
+
+        async function loadLinkedChildren(parentId) {
+            try {
+                const snapshot = await db.collection('students')
+                    .where('parentId', '==', parentId)
+                    .get();
+
+                linkedChildren = [];
+                for (const doc of snapshot.docs) {
+                    const data = doc.data();
+                    const userDoc = await db.collection('users').doc(data.userId).get();
+                    const userData = userDoc.exists ? userDoc.data() : {};
+
+                    // Get REAL progress from studentProgress collection
+                    let progress = 0;
+                    let avgScore = 0;
+                    let lessonsCompleted = 0;
+                    let certificates = 0;
+
+                    const progressSnapshot = await db.collection('studentProgress')
+                        .where('studentId', '==', data.userId)
+                        .get();
+
+                    progressSnapshot.forEach(pDoc => {
+                        const pData = pDoc.data();
+                        progress = Math.max(progress, pData.progress || 0);
+                        lessonsCompleted = pData.lessonsCompleted || 0;
+                        if (pData.averageScore) {
+                            avgScore = pData.averageScore;
+                        }
+                    });
+
+                    // Get certificates
+                    const certSnapshot = await db.collection('certificates')
+                        .where('studentId', '==', data.userId)
+                        .get();
+                    certificates = certSnapshot.size || 0;
+
+                    linkedChildren.push({
+                        id: doc.id,
+                        ...data,
+                        userData: userData,
+                        progress: progress,
+                        averageScore: avgScore || 0,
+                        lessonsCompleted: lessonsCompleted,
+                        certificates: certificates
+                    });
+                }
+
+                document.getElementById('childrenCount').textContent = linkedChildren.length;
+                document.getElementById('childCount').textContent = linkedChildren.length;
+                document.getElementById('childrenBadge').textContent = linkedChildren.length;
+
+                const list = document.getElementById('childrenList');
+
+                if (linkedChildren.length === 0) {
+                    list.innerHTML = `
+                        <div class="text-muted" style="padding:1.5rem 0;text-align:center;">
+                            📭 No children linked yet.<br>
+                            Ask your child to share their secret key with you.
+                        </div>
+                    `;
+                    return;
+                }
+
+                let html = '';
+                let totalScore = 0;
+
+                for (const child of linkedChildren) {
+                    const childName = child.userData?.fullName || 'Child';
+                    const progress = child.progress || 0;
+                    const score = child.averageScore || 0;
+                    totalScore += score;
+
+                    html += `
+                        <div class="child-card">
+                            <div class="flex-between">
+                                <div>
+                                    <div class="child-name">${childName}</div>
+                                    <div class="child-details">📚 ${child.examType || 'WAEC'} • Grade ${child.gradeLevel || 'SS1'}</div>
+                                    ${child.schoolName ? `<div class="child-details">🏫 ${child.schoolName}</div>` : ''}
+                                </div>
+                                <span class="badge" style="background:#667eea;font-size:0.8rem;">${score}%</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="fill" style="width:${progress}%"></div>
+                            </div>
+                            <div class="flex-between" style="margin-top:0.25rem;">
+                                <span class="progress-text">📖 ${progress}% course completion</span>
+                                <span class="progress-text">🎯 ${score}% average score</span>
+                            </div>
+                            <div style="margin-top:0.4rem;font-size:0.75rem;color:#666;display:flex;gap:1rem;flex-wrap:wrap;">
+                                <span>✅ ${child.lessonsCompleted || 0} lessons completed</span>
+                                <span>🏆 ${child.certificates || 0} certificates earned</span>
+                            </div>
+                            <button onclick="event.stopPropagation(); window.location.href='parent-report-view.html?child=${child.id}'" style="margin-top:0.5rem;background:none;border:1px solid #667eea;color:#667eea;padding:4px 12px;border-radius:6px;font-size:0.75rem;cursor:pointer;">
+                                View Full Report →
+                            </button>
+                        </div>
+                    `;
+                }
+
+                const avgDisplay = linkedChildren.length > 0 ? Math.round(totalScore / linkedChildren.length) : 0;
+                document.getElementById('avgScore').textContent = `${avgDisplay}%`;
+                list.innerHTML = html;
+
+            } catch (error) {
+                console.error('Error loading children:', error);
+            }
+        }
+
+        // ============================================================
+        // 📋 LOAD RECENT ACTIVITY
+        // ============================================================
+
+        async function loadRecentActivity() {
+            try {
+                const user = auth.currentUser;
+                if (!user) return;
+
+                const snapshot = await db.collection('activity')
+                    .where('parentId', '==', user.uid)
+                    .limit(5)
+                    .get();
+
+                const activities = [];
+                snapshot.forEach(doc => {
+                    activities.push({ id: doc.id, ...doc.data() });
+                });
+
+                const container = document.getElementById('recentActivity');
+
+                if (activities.length === 0) {
+                    container.innerHTML = `
+                        <div class="text-muted" style="padding:0.5rem 0;text-align:center;">No recent activity</div>
+                    `;
+                    return;
+                }
+
+                let html = '';
+                for (const activity of activities) {
+                    const time = activity.createdAt?.toDate?.() || new Date();
+                    const icon = activity.type === 'lesson' ? '📚' : activity.type === 'tutor' ? '👨‍🏫' : '📝';
+                    html += `
+                        <div style="padding:0.4rem 0;border-bottom:1px solid #f3f4f6;display:flex;gap:0.5rem;align-items:center;">
+                            <span style="font-size:1.2rem;">${icon}</span>
+                            <div style="flex:1;">
+                                <div style="font-size:0.85rem;color:#333;">${activity.message || 'Activity'}</div>
+                                <div style="font-size:0.7rem;color:#999;">${timeAgo(time)}</div>
+                            </div>
+                        </div>
+                    `;
+                }
+                container.innerHTML = html;
+
+            } catch (error) {
+                console.error('Error loading activity:', error);
+            }
+        }
+
+        // ============================================================
+        // 🔗 LINK CHILD - WITH STUDENT NOTIFICATION
+        // ============================================================
+
+        async function linkChild() {
+            const input = document.getElementById('secretKeyInput');
+            const key = input.value.trim().toUpperCase();
+
+            if (key.length !== 16) {
+                showToast('Please enter a valid 16-character key', 'error');
+                return;
+            }
+
+            try {
+                const user = auth.currentUser;
+                if (!user) {
+                    showToast('Please login first', 'error');
+                    return;
+                }
+
+                const snapshot = await db.collection('students')
+                    .where('parentKey', '==', key)
+                    .get();
+
+                if (snapshot.empty) {
+                    showToast('❌ Invalid secret key. Please check with your child.', 'error');
+                    return;
+                }
+
+                let found = false;
+                for (const doc of snapshot.docs) {
+                    const studentData = doc.data();
+
+                    if (studentData.parentId) {
+                        showToast('This child is already linked to another parent', 'warning');
+                        continue;
+                    }
+
+                    await db.collection('students').doc(doc.id).update({
+                        parentId: user.uid,
+                        linkedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+
+                    // Send notification to STUDENT that parent linked
+                    await db.collection('notifications').add({
+                        userId: studentData.userId,
+                        title: '👨‍👧 Parent Linked!',
+                        message: `${userData?.fullName || 'Your parent'} has successfully linked to your account. They can now track your progress.`,
+                        type: 'parent_link',
+                        parentId: user.uid,
+                        parentName: userData?.fullName || 'Parent',
+                        read: false,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+
+                    found = true;
+                    break;
+                }
+
+                if (found) {
+                    showToast('✅ Child linked successfully! 🎉', 'success');
+                    document.getElementById('secretKeyInput').value = '';
+                    await loadLinkedChildren(user.uid);
+                } else {
+                    showToast('❌ Could not link child. Please contact support.', 'error');
+                }
+
+            } catch (error) {
+                console.error('Error linking child:', error);
+                showToast('❌ ' + error.message, 'error');
+            }
+        }
+
+        // ============================================================
+        // 📬 REPORT TOGGLE
+        // ============================================================
+
+        async function toggleReport() {
+            try {
+                const user = auth.currentUser;
+                if (!user) return;
+
+                const checked = document.getElementById('reportToggle').checked;
+                await db.collection('parents').doc(user.uid).update({
+                    reportEnabled: checked
+                });
+
+                if (checked) {
+                    showToast('✅ Weekly reports enabled! You\'ll receive updates via SMS.', 'success');
+                } else {
+                    showToast('⚠️ Weekly reports disabled', 'warning');
+                }
+
+            } catch (error) {
+                console.error('Error toggling report:', error);
+                showToast('Error updating preference', 'error');
+            }
+        }
+
+        // ============================================================
+        // 🚪 LOGOUT
+        // ============================================================
+
+        async function logout() {
+            if (!confirm('Are you sure you want to logout?')) return;
+
+            try {
+                await auth.signOut();
+                showToast('👋 Logged out', 'success');
+                window.location.href = 'index.html';
+            } catch (error) {
+                showToast('❌ ' + error.message, 'error');
+            }
+        }
+
+        auth.onAuthStateChanged(user => {
+            if (!user) {
+                document.getElementById('loadingScreen').classList.add('hidden');
+                window.location.href = 'index.html';
+            } else {
+                loadParentDashboard();
+                setInterval(loadNotifications, 30000);
+                setInterval(() => loadLinkedChildren(user.uid), 60000);
+                setInterval(loadMessages, 30000);
+            }
+        });
+
+        console.log('👪 Parent Dashboard PRO loaded!');
+        console.log('✅ Moderation alert now opens the actual post!');
+        console.log('🔍 Check the console for debug info when you click "View Post".');
+    </script>
+
+</body>
+</html>

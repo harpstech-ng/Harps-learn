@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Tutor Bootcamp - HarpsLearn</title>
+
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f0f2f5;
+            min-height: 100vh;
+        }
+
+        .navbar {
+            background: white;
+            padding: 0.6rem 1.2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        .navbar .logo {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #1a1a2e;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            cursor: pointer;
+        }
+        .navbar .logo span { color: #667eea; }
+        .navbar .back-btn {
+            background: none;
+            border: none;
+            font-size: 1.2rem;
+            cursor: pointer;
+            color: #666;
+            padding: 4px 10px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        .navbar .back-btn:hover { background: #f0f2f5; }
+
+        .container { max-width: 700px; margin: 0 auto; padding: 0.8rem; }
+
+        .page-header { margin-bottom: 1rem; }
+        .page-header h1 { font-size: 1.5rem; color: #1a1a2e; }
+        .page-header p { color: #666; font-size: 0.9rem; margin-top: 0.2rem; }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 0.5rem 1.2rem;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            font-size: 0.85rem;
+        }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(102,126,234,0.4); }
+
+        .btn-success {
+            background: #22c55e;
+            color: white;
+            border: none;
+            padding: 0.5rem 1.2rem;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            font-size: 0.85rem;
+        }
+        .btn-success:hover { background: #16a34a; transform: translateY(-2px); }
+
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 0.4rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            font-size: 0.8rem;
+        }
+        .btn-danger:hover { background: #dc2626; }
+
+        .btn-outline {
+            background: transparent;
+            color: #667eea;
+            border: 2px solid #667eea;
+            padding: 0.4rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            font-size: 0.8rem;
+        }
+        .btn-outline:hover { background: #667eea; color: white; }
+
+        .btn-sm { padding: 4px 12px; font-size: 0.75rem; }
+        .btn-block { width: 100%; padding: 0.8rem; }
+
+        .course-card {
+            background: white;
+            border-radius: 14px;
+            padding: 1rem;
+            margin-bottom: 0.8rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            border-left: 4px solid #667eea;
+            transition: all 0.3s ease;
+        }
+        .course-card:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.1); }
+
+        .course-card .course-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+        .course-card .course-icon { font-size: 2rem; }
+        .course-card .course-name { font-weight: 700; color: #1a1a2e; font-size: 1rem; }
+        .course-card .course-meta { color: #666; font-size: 0.8rem; margin: 0.2rem 0; }
+        .course-card .course-meta span { background: #f0f2f5; padding: 2px 10px; border-radius: 10px; margin-right: 4px; }
+
+        .course-card .stats-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 0.5rem;
+            margin: 0.5rem 0;
+        }
+        .course-card .stats-row .stat {
+            background: #f8f9fa;
+            padding: 0.4rem;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .course-card .stats-row .stat .number { font-weight: 700; color: #667eea; font-size: 1.1rem; }
+        .course-card .stats-row .stat .label { font-size: 0.6rem; color: #666; }
+
+        .course-card .course-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+            flex-wrap: wrap;
+        }
+        .course-card .course-actions button { flex: 1; min-width: 100px; }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 0.65rem;
+            font-weight: 600;
+        }
+        .badge.active { background: #dcfce7; color: #166534; }
+        .badge.inactive { background: #fee2e2; color: #991b1b; }
+
+        .text-muted { color: #666; font-size: 0.85rem; }
+        .flex-between { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; }
+        .mt-1 { margin-top: 0.5rem; }
+        .mt-2 { margin-top: 1rem; }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: white;
+            padding: 0.8rem 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            z-index: 5000;
+            animation: toastSlide 0.4s ease;
+            max-width: 90%;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+        .toast.success { background: #22c55e; }
+        .toast.error { background: #ef4444; }
+        .toast.warning { background: #f59e0b; }
+        @keyframes toastSlide { from { transform: translateX(-50%) translateY(100px); opacity: 0; } to { transform: translateX(-50%) translateY(0); opacity: 1; } }
+
+        .empty-state { text-align: center; padding: 2rem; color: #999; }
+        .empty-state .icon { font-size: 3rem; display: block; margin-bottom: 0.5rem; }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 3000;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal {
+            background: white;
+            border-radius: 20px;
+            padding: 1.5rem;
+            max-width: 500px;
+            width: 100%;
+            max-height: 80vh;
+            overflow-y: auto;
+            animation: slideUp 0.3s ease;
+        }
+        @keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .modal h3 { font-size: 1.2rem; color: #1a1a2e; margin-bottom: 0.5rem; }
+        .modal p { color: #666; font-size: 0.9rem; margin-bottom: 1rem; }
+        .modal .form-group { margin-bottom: 1rem; }
+        .modal .form-group label { display: block; font-weight: 600; margin-bottom: 0.3rem; color: #333; font-size: 0.9rem; }
+        .modal .form-group input, .modal .form-group select, .modal .form-group textarea {
+            width: 100%;
+            padding: 10px 14px;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            font-family: inherit;
+        }
+        .modal .form-group input:focus, .modal .form-group select:focus, .modal .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .modal .form-group textarea { min-height: 80px; resize: vertical; }
+        .modal .modal-actions { display: flex; gap: 0.5rem; margin-top: 1rem; }
+        .modal .modal-actions button { flex: 1; padding: 10px; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; }
+        .modal .modal-actions .btn-primary { background: linear-gradient(135deg, #667eea, #764ba2); color: white; }
+        .modal .modal-actions .btn-secondary { background: #f0f2f5; color: #666; }
+
+        @media (max-width: 600px) {
+            .navbar { padding: 0.4rem 0.8rem; }
+            .navbar .logo { font-size: 1.1rem; }
+            .container { padding: 0.4rem; }
+            .course-card .stats-row { grid-template-columns: 1fr 1fr; }
+            .course-card .course-actions { flex-direction: column; }
+            .course-card .course-actions button { width: 100%; }
+            .modal { padding: 1rem; margin: 0.5rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="navbar">
+        <div class="logo" onclick="window.location.href='tutor-dashboard.html'">👨‍🏫 Harps<span>Learn</span></div>
+        <button class="back-btn" onclick="window.location.href='tutor-dashboard.html'">✕</button>
+    </div>
+
+    <div class="container">
+        <div class="page-header">
+            <div class="flex-between">
+                <div>
+                    <h1>📚 Bootcamp Courses</h1>
+                    <p>Manage your bootcamp courses and track student progress.</p>
+                </div>
+                <button class="btn-primary" onclick="openCreateCourse()">➕ New Course</button>
+            </div>
+        </div>
+
+        <div id="coursesList">
+            <div class="empty-state">
+                <span class="icon">📚</span>
+                <p>Loading courses...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== CREATE COURSE MODAL ===== -->
+    <div class="modal-overlay" id="createCourseModal">
+        <div class="modal">
+            <h3>📝 Create Bootcamp Course</h3>
+            <p>Create a new holiday bootcamp course for students.</p>
+            <form id="createCourseForm">
+                <div class="form-group">
+                    <label>Course Title</label>
+                    <input type="text" id="courseTitle" required placeholder="e.g., Mathematics WAEC Bootcamp" />
+                </div>
+                <div class="form-group">
+                    <label>Subject</label>
+                    <select id="courseSubject" required>
+                        <option value="">Select subject</option>
+                        <option value="Mathematics">Mathematics</option>
+                        <option value="English">English</option>
+                        <option value="Physics">Physics</option>
+                        <option value="Chemistry">Chemistry</option>
+                        <option value="Biology">Biology</option>
+                        <option value="Economics">Economics</option>
+                        <option value="Government">Government</option>
+                        <option value="History">History</option>
+                        <option value="Geography">Geography</option>
+                        <option value="Literature">Literature</option>
+                        <option value="CRS">CRS/IRS</option>
+                        <option value="French">French</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Exam Type</label>
+                    <select id="courseExam" required>
+                        <option value="">Select exam</option>
+                        <option value="WAEC">WAEC</option>
+                        <option value="NECO">NECO</option>
+                        <option value="BECE">BECE</option>
+                        <option value="JAMB">JAMB</option>
+                        <option value="KCSE">KCSE</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Duration</label>
+                    <input type="text" id="courseDuration" required placeholder="e.g., 4 weeks" />
+                </div>
+                <div class="form-group">
+                    <label>Price (₦)</label>
+                    <input type="number" id="coursePrice" required placeholder="15000" min="1000" />
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="courseDescription" placeholder="Describe what students will learn in this course..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Number of Lessons</label>
+                    <input type="number" id="courseLessons" required placeholder="12" min="1" max="50" />
+                </div>
+                <div class="form-group">
+                    <label>Course Icon</label>
+                    <select id="courseIcon">
+                        <option value="📐">📐 Mathematics</option>
+                        <option value="📖">📖 English</option>
+                        <option value="⚡">⚡ Physics</option>
+                        <option value="🧪">🧪 Chemistry</option>
+                        <option value="🧬">🧬 Biology</option>
+                        <option value="📊">📊 Economics</option>
+                        <option value="🏛️">🏛️ Government</option>
+                        <option value="📜">📜 History</option>
+                        <option value="🌍">🌍 Geography</option>
+                        <option value="📝">📝 Literature</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;">
+                        <input type="checkbox" id="coursePopular" /> ⭐ Mark as Popular
+                    </label>
+                </div>
+                <div class="modal-actions">
+                    <button type="submit" class="btn-primary">Create Course</button>
+                    <button type="button" class="btn-secondary" onclick="closeCreateCourse()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ===== STUDENTS MODAL ===== -->
+    <div class="modal-overlay" id="studentsModal">
+        <div class="modal">
+            <h3 id="studentsModalTitle">👨‍🎓 Students Enrolled</h3>
+            <div id="studentsList"></div>
+            <button class="btn-secondary mt-1" onclick="closeStudentsModal()" style="width:100%;padding:10px;border:none;border-radius:10px;font-weight:600;cursor:pointer;background:#f0f2f5;color:#666;">Close</button>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDy-j3_iZwv7IE7HYHircFeEWGdoGizf5M",
+            authDomain: "harpslearn.firebaseapp.com",
+            projectId: "harpslearn",
+            storageBucket: "harpslearn.firebasestorage.app",
+            messagingSenderId: "625210543198",
+            appId: "1:625210543198:web:6faebd2af1465facf338cf",
+            measurementId: "G-8Z8HVC5V5J"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        let allCourses = [];
+        let currentUser = null;
+
+        function showToast(message, type = 'info') {
+            const existing = document.querySelector('.toast');
+            if (existing) existing.remove();
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => { toast.remove(); }, 4000);
+        }
+
+        async function loadCourses() {
+            try {
+                const user = auth.currentUser;
+                if (!user) { window.location.href = 'index.html'; return; }
+
+                currentUser = user;
+
+                const userDoc = await db.collection('users').doc(user.uid).get();
+                const userData = userDoc.data();
+
+                if (userData.role !== 'tutor' && userData.role !== 'admin') {
+                    showToast('This page is for tutors only', 'error');
+                    setTimeout(() => window.location.href = 'tutor-dashboard.html', 1500);
+                    return;
+                }
+
+                const snapshot = await db.collection('bootcampCourses').get();
+
+                if (snapshot.empty) {
+                    // Create default courses
+                    await createDefaultCourses();
+                    await loadCourses();
+                    return;
+                }
+
+                allCourses = [];
+                for (const doc of snapshot.docs) {
+                    const data = doc.data();
+                    // Count enrolled students
+                    const enrolledSnapshot = await db.collection('studentProgress')
+                        .where('courseId', '==', doc.id)
+                        .get();
+
+                    allCourses.push({
+                        id: doc.id,
+                        ...data,
+                        enrolledCount: enrolledSnapshot.size || 0
+                    });
+                }
+
+                renderCourses(allCourses);
+
+            } catch (error) {
+                console.error('Error loading courses:', error);
+                showToast('Error loading courses', 'error');
+            }
+        }
+
+        async function createDefaultCourses() {
+            const defaultCourses = [
+                { title: "Mathematics WAEC Bootcamp", subject: "Mathematics", examType: "WAEC", duration: "4 weeks", price: 15000, icon: "📐", lessons: 12, popular: true, description: "4-week intensive course covering all WAEC math topics." },
+                { title: "English WAEC Bootcamp", subject: "English", examType: "WAEC", duration: "4 weeks", price: 15000, icon: "📖", lessons: 10, popular: false, description: "4-week course focusing on comprehension, grammar, and literature." },
+                { title: "JAMB Prep - Physics", subject: "Physics", examType: "JAMB", duration: "6 weeks", price: 20000, icon: "⚡", lessons: 15, popular: true, description: "6-week intensive course covering all JAMB physics topics." },
+                { title: "NECO Prep - Chemistry", subject: "Chemistry", examType: "NECO", duration: "5 weeks", price: 18000, icon: "🧪", lessons: 12, popular: false, description: "5-week course on organic, inorganic, and physical chemistry." }
+            ];
+
+            for (const course of defaultCourses) {
+                await db.collection('bootcampCourses').add(course);
+            }
+            showToast('📚 Default courses created!', 'success');
+        }
+
+        function renderCourses(courses) {
+            const container = document.getElementById('coursesList');
+
+            if (!courses || courses.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <span class="icon">📭</span>
+                        <p>No bootcamp courses yet. Create your first course!</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '';
+            for (const course of courses) {
+                const progress = course.progress || 0;
+                const isPopular = course.popular;
+                const price = course.price || 15000;
+                const examType = course.examType || 'General';
+                const enrolled = course.enrolledCount || 0;
+
+                html += `
+                    <div class="course-card">
+                        <div class="course-header">
+                            <div>
+                                <div class="course-icon">${course.icon || '📚'}</div>
+                                <div class="course-name">${course.title}</div>
+                                <div class="course-meta">
+                                    <span>📝 ${examType}</span>
+                                    <span>📚 ${course.subject || 'General'}</span>
+                                    <span>⏱️ ${course.duration || '4 weeks'}</span>
+                                    <span>📖 ${course.lessons || 0} lessons</span>
+                                    ${isPopular ? '<span class="badge active">⭐ Popular</span>' : ''}
+                                </div>
+                            </div>
+                            <div>
+                                <span class="badge active">₦${price.toLocaleString()}</span>
+                            </div>
+                        </div>
+
+                        <div class="stats-row">
+                            <div class="stat">
+                                <div class="number">${enrolled}</div>
+                                <div class="label">👨‍🎓 Enrolled</div>
+                            </div>
+                            <div class="stat">
+                                <div class="number">${course.lessons || 0}</div>
+                                <div class="label">📖 Lessons</div>
+                            </div>
+                            <div class="stat">
+                                <div class="number">${course.duration || '4'}</div>
+                                <div class="label">⏱️ Weeks</div>
+                            </div>
+                        </div>
+
+                        <div class="course-actions">
+                            <button class="btn-primary" onclick="viewStudents('${course.id}', '${course.title}')">👨‍🎓 Students</button>
+                            <button class="btn-success" onclick="addLesson('${course.id}')">➕ Add Lesson</button>
+                            <button class="btn-outline" onclick="editCourse('${course.id}')">✏️ Edit</button>
+                            <button class="btn-danger" onclick="deleteCourse('${course.id}')">🗑️ Delete</button>
+                        </div>
+                    </div>
+                `;
+            }
+            container.innerHTML = html;
+        }
+
+        function openCreateCourse() {
+            document.getElementById('createCourseModal').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeCreateCourse() {
+            document.getElementById('createCourseModal').classList.remove('active');
+            document.body.style.overflow = '';
+            document.getElementById('createCourseForm').reset();
+        }
+
+        document.getElementById('createCourseForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const title = document.getElementById('courseTitle').value.trim();
+            const subject = document.getElementById('courseSubject').value;
+            const examType = document.getElementById('courseExam').value;
+            const duration = document.getElementById('courseDuration').value.trim();
+            const price = parseInt(document.getElementById('coursePrice').value);
+            const description = document.getElementById('courseDescription').value.trim();
+            const lessons = parseInt(document.getElementById('courseLessons').value);
+            const icon = document.getElementById('courseIcon').value;
+            const popular = document.getElementById('coursePopular').checked;
+
+            if (!title || !subject || !examType || !duration || !price || !lessons) {
+                showToast('Please fill in all required fields', 'error');
+                return;
+            }
+
+            const btn = this.querySelector('.btn-primary');
+            btn.disabled = true;
+            btn.textContent = 'Creating...';
+
+            try {
+                await db.collection('bootcampCourses').add({
+                    title,
+                    subject,
+                    examType,
+                    duration,
+                    price,
+                    description: description || '',
+                    lessons,
+                    icon,
+                    popular,
+                    progress: 0,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                showToast('✅ Course created successfully!', 'success');
+                closeCreateCourse();
+                await loadCourses();
+
+            } catch (error) {
+                showToast('Error: ' + error.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Create Course';
+            }
+        });
+
+        async function viewStudents(courseId, courseTitle) {
+            try {
+                const snapshot = await db.collection('studentProgress')
+                    .where('courseId', '==', courseId)
+                    .get();
+
+                const students = [];
+                for (const doc of snapshot.docs) {
+                    const data = doc.data();
+                    const userDoc = await db.collection('users').doc(data.studentId).get();
+                    const userData = userDoc.exists ? userDoc.data() : {};
+                    students.push({
+                        ...data,
+                        userData
+                    });
+                }
+
+                document.getElementById('studentsModalTitle').textContent = `👨‍🎓 ${courseTitle} - Students (${students.length})`;
+
+                const list = document.getElementById('studentsList');
+                if (students.length === 0) {
+                    list.innerHTML = '<div class="text-muted" style="padding:1rem;text-align:center;">No students enrolled yet</div>';
+                } else {
+                    let html = '';
+                    for (const student of students) {
+                        const name = student.userData?.fullName || 'Student';
+                        const progress = student.progress || 0;
+                        html += `
+                            <div style="background:#f8f9fa;padding:0.6rem;border-radius:8px;margin-bottom:0.4rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.3rem;">
+                                <span style="font-weight:600;">${name}</span>
+                                <span style="font-size:0.8rem;color:#667eea;">📊 ${progress}% complete</span>
+                            </div>
+                        `;
+                    }
+                    list.innerHTML = html;
+                }
+
+                document.getElementById('studentsModal').classList.add('active');
+                document.body.style.overflow = 'hidden';
+
+            } catch (error) {
+                showToast('Error loading students', 'error');
+            }
+        }
+
+        function closeStudentsModal() {
+            document.getElementById('studentsModal').classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        function addLesson(courseId) {
+            showToast('📚 Add lesson feature coming soon!', 'warning');
+        }
+
+        function editCourse(courseId) {
+            showToast('✏️ Edit course feature coming soon!', 'warning');
+        }
+
+        async function deleteCourse(courseId) {
+            if (!confirm('⚠️ Are you sure you want to delete this course? This will also delete all student progress.')) return;
+
+            try {
+                const snapshot = await db.collection('studentProgress')
+                    .where('courseId', '==', courseId)
+                    .get();
+
+                for (const doc of snapshot.docs) {
+                    await db.collection('studentProgress').doc(doc.id).delete();
+                }
+
+                await db.collection('bootcampCourses').doc(courseId).delete();
+                showToast('🗑️ Course deleted!', 'success');
+                await loadCourses();
+
+            } catch (error) {
+                showToast('Error: ' + error.message, 'error');
+            }
+        }
+
+        document.getElementById('studentsModal').addEventListener('click', function(e) {
+            if (e.target === this) closeStudentsModal();
+        });
+
+        auth.onAuthStateChanged(user => {
+            if (!user) { window.location.href = 'index.html'; }
+            else { loadCourses(); }
+        });
+
+        console.log('📚 Tutor Bootcamp loaded!');
+    </script>
+
+</body>
+</html>

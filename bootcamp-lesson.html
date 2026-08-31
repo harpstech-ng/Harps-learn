@@ -1,0 +1,1050 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Bootcamp Lesson - HarpsLearn</title>
+
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e;
+            min-height: 100vh;
+            color: white;
+        }
+
+        /* ===== LOADING SCREEN ===== */
+        #loadingScreen {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: #1a1a2e;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        #loadingScreen .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        #loadingScreen p {
+            margin-top: 1rem;
+            color: #999;
+            font-size: 0.9rem;
+        }
+        #loadingScreen.hidden { display: none; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        #mainContent { display: none; }
+        #mainContent.visible { display: block; }
+
+        .navbar {
+            background: #1a1a2e;
+            padding: 0.6rem 1.2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #2d2d44;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        .navbar .logo {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+        .navbar .logo span { color: #667eea; }
+        .navbar .back-btn {
+            background: none;
+            border: none;
+            font-size: 1.2rem;
+            cursor: pointer;
+            color: #999;
+            padding: 4px 10px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        .navbar .back-btn:hover { background: #2d2d44; color: white; }
+
+        .container { max-width: 800px; margin: 0 auto; padding: 0.8rem; }
+
+        /* ===== LESSON HEADER ===== */
+        .lesson-header { margin-bottom: 1rem; }
+        .lesson-header .breadcrumb { color: #999; font-size: 0.8rem; }
+        .lesson-header .breadcrumb span { color: #667eea; }
+        .lesson-header h1 { font-size: 1.5rem; margin-top: 0.2rem; }
+        .lesson-header .progress-text { color: #999; font-size: 0.85rem; }
+
+        /* ===== AUDIO PLAYER ===== */
+        .audio-player {
+            background: #2d2d44;
+            border-radius: 14px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        .audio-player .track-info {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            margin-bottom: 0.5rem;
+        }
+        .audio-player .track-info .icon { font-size: 2rem; }
+        .audio-player .track-info .title { font-weight: 600; }
+        .audio-player .track-info .duration { color: #999; font-size: 0.8rem; margin-left: auto; }
+
+        .audio-player audio {
+            width: 100%;
+            border-radius: 10px;
+            background: #1a1a2e;
+        }
+        .audio-player audio::-webkit-media-controls-panel {
+            background: #1a1a2e;
+        }
+        .audio-player audio::-webkit-media-controls-current-time-display,
+        .audio-player audio::-webkit-media-controls-time-remaining-display {
+            color: white;
+        }
+
+        /* ===== TABS ===== */
+        .tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+        .tab-btn {
+            padding: 8px 20px;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #2d2d44;
+            color: #999;
+        }
+        .tab-btn:hover { background: #3d3d55; color: white; }
+        .tab-btn.active { background: #667eea; color: white; }
+
+        /* ===== WHITEBOARD ===== */
+        .whiteboard-container {
+            background: #2d2d44;
+            border-radius: 14px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        .whiteboard-container .toolbar {
+            display: flex;
+            gap: 0.4rem;
+            flex-wrap: wrap;
+            margin-bottom: 0.5rem;
+        }
+        .whiteboard-container .toolbar button {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #3d3d55;
+            color: #ccc;
+        }
+        .whiteboard-container .toolbar button:hover { background: #4d4d66; color: white; }
+        .whiteboard-container .toolbar button.active { background: #667eea; color: white; }
+        .whiteboard-container .toolbar .color-picker {
+            display: flex;
+            gap: 4px;
+            align-items: center;
+        }
+        .whiteboard-container .toolbar .color-picker input[type="color"] {
+            width: 30px;
+            height: 30px;
+            border: 2px solid #3d3d55;
+            border-radius: 50%;
+            cursor: pointer;
+            padding: 2px;
+            background: none;
+        }
+        .whiteboard-container .toolbar .color-picker input[type="color"]::-webkit-color-swatch-wrapper {
+            padding: 0;
+        }
+        .whiteboard-container .toolbar .color-picker input[type="color"]::-webkit-color-swatch {
+            border: none;
+            border-radius: 50%;
+        }
+        .whiteboard-container .toolbar .size-control {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+        .whiteboard-container .toolbar .size-control input[type="range"] {
+            width: 60px;
+            height: 4px;
+            -webkit-appearance: none;
+            background: #3d3d55;
+            border-radius: 4px;
+        }
+        .whiteboard-container .toolbar .size-control input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+        }
+
+        .whiteboard-container canvas {
+            width: 100%;
+            height: 400px;
+            background: white;
+            border-radius: 10px;
+            touch-action: none;
+            cursor: crosshair;
+        }
+
+        /* ===== QUIZ ===== */
+        .quiz-container {
+            background: #2d2d44;
+            border-radius: 14px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        .quiz-container .question-number { color: #999; font-size: 0.8rem; margin-bottom: 0.5rem; }
+        .quiz-container .question-text { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.5rem; }
+        .quiz-container .options { display: flex; flex-direction: column; gap: 0.4rem; }
+        .quiz-container .options button {
+            padding: 10px 14px;
+            border: 2px solid #3d3d55;
+            border-radius: 10px;
+            background: #1a1a2e;
+            color: white;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: left;
+        }
+        .quiz-container .options button:hover { border-color: #667eea; background: #2d2d44; }
+        .quiz-container .options button.correct { border-color: #22c55e; background: #22c55e33; }
+        .quiz-container .options button.wrong { border-color: #ef4444; background: #ef444433; }
+        .quiz-container .options button.selected { border-color: #667eea; background: #667eea33; }
+        .quiz-container .options button:disabled { cursor: not-allowed; opacity: 0.7; }
+
+        .quiz-container .result {
+            margin-top: 0.5rem;
+            padding: 1rem;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .quiz-container .result.pass { background: #22c55e33; border: 2px solid #22c55e; }
+        .quiz-container .result.fail { background: #ef444433; border: 2px solid #ef4444; }
+
+        /* ===== NAVIGATION ===== */
+        .lesson-nav {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: space-between;
+            flex-wrap: wrap;
+        }
+        .lesson-nav button {
+            padding: 10px 24px;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .lesson-nav .prev-btn { background: #2d2d44; color: #ccc; }
+        .lesson-nav .prev-btn:hover { background: #3d3d55; color: white; }
+        .lesson-nav .next-btn { background: #667eea; color: white; }
+        .lesson-nav .next-btn:hover { transform: scale(1.02); }
+        .lesson-nav .next-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: white;
+            padding: 0.8rem 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            z-index: 5000;
+            animation: toastSlide 0.4s ease;
+            max-width: 90%;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+        .toast.success { background: #22c55e; }
+        .toast.error { background: #ef4444; }
+        .toast.warning { background: #f59e0b; }
+        @keyframes toastSlide { from { transform: translateX(-50%) translateY(100px); opacity: 0; } to { transform: translateX(-50%) translateY(0); opacity: 1; } }
+
+        .text-muted { color: #999; font-size: 0.85rem; }
+        .flex-between { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; }
+        .mt-1 { margin-top: 0.5rem; }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        @media (max-width: 600px) {
+            .navbar { padding: 0.4rem 0.8rem; }
+            .navbar .logo { font-size: 1rem; }
+            .container { padding: 0.4rem; }
+            .whiteboard-container canvas { height: 280px; }
+            .whiteboard-container .toolbar { gap: 0.3rem; }
+            .whiteboard-container .toolbar button { padding: 4px 10px; font-size: 0.65rem; }
+            .lesson-nav button { padding: 8px 16px; font-size: 0.85rem; }
+            .quiz-container .question-text { font-size: 1rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ===== LOADING SCREEN ===== -->
+    <div id="loadingScreen">
+        <div class="spinner"></div>
+        <p>Loading lesson...</p>
+    </div>
+
+    <!-- ===== MAIN CONTENT ===== -->
+    <div id="mainContent">
+
+        <div class="navbar">
+            <div class="logo" onclick="window.location.href='holiday-bootcamp.html'">📚 Harps<span>Learn</span></div>
+            <button class="back-btn" onclick="window.location.href='holiday-bootcamp.html'">✕</button>
+        </div>
+
+        <div class="container">
+
+            <!-- Lesson Header -->
+            <div class="lesson-header">
+                <div class="breadcrumb">📚 <span id="courseName">Course</span> / Lesson <span id="lessonNumber">1</span></div>
+                <h1 id="lessonTitle">Loading lesson...</h1>
+                <div class="flex-between">
+                    <span class="progress-text">📊 Progress: <span id="lessonProgress">0</span>%</span>
+                    <span class="progress-text" id="lessonStatus">⏳ Not started</span>
+                </div>
+            </div>
+
+            <!-- Audio Player -->
+            <div class="audio-player">
+                <div class="track-info">
+                    <span class="icon">🎧</span>
+                    <span class="title" id="audioTitle">Audio Lesson</span>
+                    <span class="duration" id="audioDuration">0:00 / 0:00</span>
+                </div>
+                <audio id="audioPlayer" controls></audio>
+            </div>
+
+            <!-- Tabs -->
+            <div class="tabs">
+                <button class="tab-btn active" data-tab="whiteboard" onclick="switchTab('whiteboard')">🖍️ Whiteboard</button>
+                <button class="tab-btn" data-tab="quiz" onclick="switchTab('quiz')">📝 Quiz</button>
+            </div>
+
+            <!-- Whiteboard Tab -->
+            <div class="tab-content active" id="tab-whiteboard">
+                <div class="whiteboard-container">
+                    <div class="toolbar">
+                        <button class="active" onclick="setTool('pen')" id="tool-pen">✏️ Pen</button>
+                        <button onclick="setTool('text')" id="tool-text">📝 Text</button>
+                        <button onclick="setTool('eraser')" id="tool-eraser">🧹 Eraser</button>
+                        <button onclick="clearBoard()">🗑️ Clear</button>
+                        <button onclick="undoBoard()">↩️ Undo</button>
+                        <button onclick="redoBoard()">↪️ Redo</button>
+                        <div class="color-picker">
+                            <input type="color" id="penColor" value="#000000" onchange="setColor(this.value)" />
+                        </div>
+                        <div class="size-control">
+                            <span style="font-size:0.7rem;color:#999;">Size:</span>
+                            <input type="range" id="penSize" min="1" max="20" value="3" onchange="setSize(this.value)" />
+                            <span id="sizeDisplay" style="font-size:0.7rem;color:#999;">3</span>
+                        </div>
+                        <button onclick="saveWhiteboard()" style="background:#22c55e;color:white;">💾 Save</button>
+                        <button onclick="exportWhiteboard()" style="background:#f59e0b;color:white;">📤 Export</button>
+                    </div>
+                    <canvas id="whiteboardCanvas"></canvas>
+                </div>
+            </div>
+
+            <!-- Quiz Tab -->
+            <div class="tab-content" id="tab-quiz">
+                <div class="quiz-container">
+                    <div id="quizContent">
+                        <div class="question-number">Question <span id="qNumber">1</span> of <span id="qTotal">0</span></div>
+                        <div class="question-text" id="qText">Loading quiz...</div>
+                        <div class="options" id="qOptions"></div>
+                        <div id="quizResult"></div>
+                        <button class="btn-primary mt-1" onclick="nextQuestion()" id="nextQBtn" style="display:none;background:#667eea;color:white;border:none;padding:10px 20px;border-radius:10px;font-weight:600;cursor:pointer;width:100%;">Next Question →</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Navigation -->
+            <div class="lesson-nav">
+                <button class="prev-btn" onclick="prevLesson()">← Previous Lesson</button>
+                <button class="next-btn" onclick="nextLesson()" id="nextLessonBtn">Next Lesson →</button>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // ============================================================
+        // 🔥 FIREBASE CONFIG
+        // ============================================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyDy-j3_iZwv7IE7HYHircFeEWGdoGizf5M",
+            authDomain: "harpslearn.firebaseapp.com",
+            projectId: "harpslearn",
+            storageBucket: "harpslearn.firebasestorage.app",
+            messagingSenderId: "625210543198",
+            appId: "1:625210543198:web:6faebd2af1465facf338cf",
+            measurementId: "G-8Z8HVC5V5J"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        // ============================================================
+        // GLOBALS
+        // ============================================================
+        let canvas, ctx;
+        let isDrawing = false;
+        let lastX, lastY;
+        let currentTool = 'pen';
+        let currentColor = '#000000';
+        let currentSize = 3;
+        let drawHistory = [];
+        let historyIndex = -1;
+        let maxHistory = 30;
+
+        let quizQuestions = [];
+        let currentQuestionIndex = 0;
+        let quizAnswered = false;
+        let quizScore = 0;
+        let quizCompleted = false;
+
+        let lessonData = null;
+        let courseId = null;
+        let lessonId = null;
+
+        // ============================================================
+        // 🎨 WHITEBOARD FUNCTIONS
+        // ============================================================
+
+        function initWhiteboard() {
+            canvas = document.getElementById('whiteboardCanvas');
+            const rect = canvas.parentElement.getBoundingClientRect();
+            canvas.width = canvas.clientWidth || 700;
+            canvas.height = 400;
+            ctx = canvas.getContext('2d');
+
+            // Set initial background
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Mouse events
+            canvas.addEventListener('mousedown', startDraw);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseup', endDraw);
+            canvas.addEventListener('mouseleave', endDraw);
+
+            // Touch events for mobile
+            canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+            canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+            canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
+
+            // Save initial state
+            saveState();
+        }
+
+        function getPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            return {
+                x: (e.clientX - rect.left) * scaleX,
+                y: (e.clientY - rect.top) * scaleY
+            };
+        }
+
+        function startDraw(e) {
+            if (currentTool === 'text') {
+                const pos = getPos(e);
+                const text = prompt('Enter text:');
+                if (text) {
+                    ctx.font = `${currentSize * 4}px Arial`;
+                    ctx.fillStyle = currentColor;
+                    ctx.fillText(text, pos.x, pos.y);
+                    saveState();
+                }
+                return;
+            }
+            isDrawing = true;
+            const pos = getPos(e);
+            lastX = pos.x;
+            lastY = pos.y;
+        }
+
+        function draw(e) {
+            if (!isDrawing || currentTool === 'text') return;
+            const pos = getPos(e);
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(pos.x, pos.y);
+            ctx.strokeStyle = currentTool === 'eraser' ? 'white' : currentColor;
+            ctx.lineWidth = currentTool === 'eraser' ? currentSize * 3 : currentSize;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.stroke();
+            lastX = pos.x;
+            lastY = pos.y;
+        }
+
+        function endDraw() {
+            if (isDrawing) {
+                isDrawing = false;
+                saveState();
+            }
+        }
+
+        function handleTouchStart(e) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const mouseEvent = new MouseEvent('mousedown', {
+                clientX: touch.clientX,
+                clientY: touch.clientY
+            });
+            canvas.dispatchEvent(mouseEvent);
+        }
+
+        function handleTouchMove(e) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const mouseEvent = new MouseEvent('mousemove', {
+                clientX: touch.clientX,
+                clientY: touch.clientY
+            });
+            canvas.dispatchEvent(mouseEvent);
+        }
+
+        function handleTouchEnd(e) {
+            e.preventDefault();
+            canvas.dispatchEvent(new MouseEvent('mouseup'));
+        }
+
+        function setTool(tool) {
+            currentTool = tool;
+            document.querySelectorAll('.toolbar button').forEach(b => b.classList.remove('active'));
+            document.getElementById(`tool-${tool}`)?.classList.add('active');
+        }
+
+        function setColor(color) {
+            currentColor = color;
+        }
+
+        function setSize(size) {
+            currentSize = parseInt(size);
+            document.getElementById('sizeDisplay').textContent = currentSize;
+        }
+
+        function saveState() {
+            const data = canvas.toDataURL();
+            // Remove old states after current index
+            drawHistory = drawHistory.slice(0, historyIndex + 1);
+            drawHistory.push(data);
+            historyIndex = drawHistory.length - 1;
+            if (drawHistory.length > maxHistory) {
+                drawHistory.shift();
+                historyIndex--;
+            }
+        }
+
+        function undoBoard() {
+            if (historyIndex > 0) {
+                historyIndex--;
+                restoreState(historyIndex);
+            }
+        }
+
+        function redoBoard() {
+            if (historyIndex < drawHistory.length - 1) {
+                historyIndex++;
+                restoreState(historyIndex);
+            }
+        }
+
+        function restoreState(index) {
+            const img = new Image();
+            img.onload = function() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0);
+            };
+            img.src = drawHistory[index];
+        }
+
+        function clearBoard() {
+            if (!confirm('Clear the whiteboard?')) return;
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            saveState();
+        }
+
+        function saveWhiteboard() {
+            const dataUrl = canvas.toDataURL('image/png');
+            // Save to Firebase
+            const user = auth.currentUser;
+            if (user && lessonId) {
+                db.collection('whiteboardSaves').add({
+                    userId: user.uid,
+                    lessonId: lessonId,
+                    imageData: dataUrl,
+                    savedAt: firebase.firestore.FieldValue.serverTimestamp()
+                }).then(() => {
+                    showToast('✅ Whiteboard saved!', 'success');
+                }).catch(() => {
+                    showToast('⚠️ Could not save to cloud. Saved locally.', 'warning');
+                    localStorage.setItem(`whiteboard_${lessonId}`, dataUrl);
+                });
+            } else {
+                localStorage.setItem(`whiteboard_${lessonId || 'temp'}`, dataUrl);
+                showToast('💾 Whiteboard saved locally!', 'success');
+            }
+        }
+
+        function exportWhiteboard() {
+            const link = document.createElement('a');
+            link.download = `whiteboard_${lessonId || Date.now()}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+
+        function loadWhiteboard() {
+            const user = auth.currentUser;
+            if (user && lessonId) {
+                db.collection('whiteboardSaves')
+                    .where('userId', '==', user.uid)
+                    .where('lessonId', '==', lessonId)
+                    .orderBy('savedAt', 'desc')
+                    .limit(1)
+                    .get()
+                    .then(snapshot => {
+                        if (!snapshot.empty) {
+                            const data = snapshot.docs[0].data();
+                            const img = new Image();
+                            img.onload = function() {
+                                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                                ctx.drawImage(img, 0, 0);
+                                saveState();
+                            };
+                            img.src = data.imageData;
+                        }
+                    })
+                    .catch(() => {
+                        // Try localStorage
+                        const local = localStorage.getItem(`whiteboard_${lessonId}`);
+                        if (local) {
+                            const img = new Image();
+                            img.onload = function() {
+                                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                                ctx.drawImage(img, 0, 0);
+                                saveState();
+                            };
+                            img.src = local;
+                        }
+                    });
+            }
+        }
+
+        // ============================================================
+        // 📝 QUIZ FUNCTIONS
+        // ============================================================
+
+        function loadQuiz(questions) {
+            quizQuestions = questions || [];
+            currentQuestionIndex = 0;
+            quizAnswered = false;
+            quizScore = 0;
+            quizCompleted = false;
+            document.getElementById('qTotal').textContent = quizQuestions.length;
+
+            if (quizQuestions.length === 0) {
+                document.getElementById('quizContent').innerHTML = `
+                    <div class="text-muted" style="text-align:center;padding:1rem;">📝 No quiz questions available</div>
+                `;
+                return;
+            }
+
+            renderQuestion();
+        }
+
+        function renderQuestion() {
+            if (currentQuestionIndex >= quizQuestions.length) {
+                showQuizResult();
+                return;
+            }
+
+            const q = quizQuestions[currentQuestionIndex];
+            document.getElementById('qNumber').textContent = currentQuestionIndex + 1;
+            document.getElementById('qText').textContent = q.question || 'Question';
+
+            const optionsContainer = document.getElementById('qOptions');
+            optionsContainer.innerHTML = '';
+            quizAnswered = false;
+            document.getElementById('nextQBtn').style.display = 'none';
+            document.getElementById('quizResult').innerHTML = '';
+
+            (q.options || []).forEach((option, index) => {
+                const btn = document.createElement('button');
+                btn.textContent = `${String.fromCharCode(65 + index)}. ${option}`;
+                btn.dataset.index = index;
+                btn.onclick = () => selectAnswer(index);
+                optionsContainer.appendChild(btn);
+            });
+        }
+
+        function selectAnswer(index) {
+            if (quizAnswered) return;
+            quizAnswered = true;
+
+            const q = quizQuestions[currentQuestionIndex];
+            const options = document.querySelectorAll('#qOptions button');
+            options.forEach((btn, i) => {
+                btn.disabled = true;
+                if (i === q.correctAnswer) btn.classList.add('correct');
+                if (i === index && index !== q.correctAnswer) btn.classList.add('wrong');
+                if (i === index) btn.classList.add('selected');
+            });
+
+            if (index === q.correctAnswer) {
+                quizScore++;
+                document.getElementById('quizResult').innerHTML = '<div class="result pass">✅ Correct! Well done! 🎉</div>';
+            } else {
+                document.getElementById('quizResult').innerHTML = '<div class="result fail">❌ Wrong! The correct answer was ' + String.fromCharCode(65 + q.correctAnswer) + '.</div>';
+            }
+
+            document.getElementById('nextQBtn').style.display = 'block';
+            document.getElementById('nextQBtn').textContent = currentQuestionIndex + 1 >= quizQuestions.length ? '📊 See Results' : 'Next Question →';
+        }
+
+        function nextQuestion() {
+            currentQuestionIndex++;
+            if (currentQuestionIndex >= quizQuestions.length) {
+                showQuizResult();
+            } else {
+                renderQuestion();
+            }
+        }
+
+        function showQuizResult() {
+            const total = quizQuestions.length;
+            const percent = Math.round((quizScore / total) * 100);
+            const passed = percent >= 70;
+
+            document.getElementById('quizContent').innerHTML = `
+                <div style="text-align:center;padding:1rem;">
+                    <div style="font-size:3rem;margin-bottom:0.5rem;">${passed ? '🎉' : '💪'}</div>
+                    <h2 style="font-size:1.5rem;">${passed ? 'Congratulations!' : 'Keep Learning!'}</h2>
+                    <p style="font-size:1.2rem;margin:0.5rem 0;">
+                        You scored <strong>${quizScore}/${total}</strong> (${percent}%)
+                    </p>
+                    <div style="background:#3d3d55;border-radius:10px;height:10px;margin:0.5rem 0;overflow:hidden;">
+                        <div style="width:${percent}%;height:100%;background:${passed ? '#22c55e' : '#f59e0b'};border-radius:10px;transition:width 0.5s ease;"></div>
+                    </div>
+                    <p class="text-muted">${passed ? '✅ You passed! Great job!' : '📝 Keep practicing and try again!'}</p>
+                    <button onclick="resetQuiz()" style="margin-top:1rem;padding:10px 30px;border:none;border-radius:10px;background:#667eea;color:white;font-weight:600;cursor:pointer;">🔄 Retry Quiz</button>
+                </div>
+            `;
+            quizCompleted = true;
+
+            // Update progress
+            updateProgress();
+        }
+
+        function resetQuiz() {
+            currentQuestionIndex = 0;
+            quizAnswered = false;
+            quizScore = 0;
+            quizCompleted = false;
+            renderQuestion();
+        }
+
+        // ============================================================
+        // 📊 PROGRESS
+        // ============================================================
+
+        function updateProgress() {
+            if (!lessonData) return;
+            let progress = 0;
+            // Audio progress
+            const audio = document.getElementById('audioPlayer');
+            if (audio && audio.duration) {
+                progress += (audio.currentTime / audio.duration) * 30;
+            }
+            // Whiteboard saved
+            progress += 20;
+            // Quiz completed
+            if (quizCompleted) {
+                progress += 50;
+            }
+            progress = Math.min(Math.round(progress), 100);
+            document.getElementById('lessonProgress').textContent = progress;
+
+            if (progress >= 100) {
+                document.getElementById('lessonStatus').textContent = '✅ Completed!';
+                document.getElementById('lessonStatus').style.color = '#22c55e';
+                document.getElementById('nextLessonBtn').style.display = 'block';
+            } else {
+                document.getElementById('lessonStatus').textContent = '⏳ In Progress';
+                document.getElementById('lessonStatus').style.color = '#f59e0b';
+            }
+
+            // Save progress to Firebase
+            const user = auth.currentUser;
+            if (user && lessonId) {
+                db.collection('studentProgress').where('studentId', '==', user.uid).where('lessonId', '==', lessonId).get()
+                    .then(snapshot => {
+                        if (!snapshot.empty) {
+                            snapshot.forEach(doc => {
+                                db.collection('studentProgress').doc(doc.id).update({
+                                    progress: progress,
+                                    quizScore: quizScore,
+                                    quizCompleted: quizCompleted,
+                                    lastAccessed: firebase.firestore.FieldValue.serverTimestamp()
+                                });
+                            });
+                        }
+                    })
+                    .catch(() => {});
+            }
+        }
+
+        // ============================================================
+        // 🎯 TAB SWITCHING
+        // ============================================================
+
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById(`tab-${tab}`).classList.add('active');
+            document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
+
+            if (tab === 'whiteboard') {
+                setTimeout(() => {
+                    const rect = canvas.parentElement.getBoundingClientRect();
+                    canvas.width = canvas.clientWidth || 700;
+                    canvas.height = 400;
+                    // Restore drawing
+                    if (drawHistory.length > 0) {
+                        restoreState(historyIndex);
+                    }
+                }, 100);
+            }
+        }
+
+        // ============================================================
+        // 📚 LOAD LESSON
+        // ============================================================
+
+        async function loadLesson() {
+            try {
+                const user = auth.currentUser;
+                if (!user) {
+                    document.getElementById('loadingScreen').classList.add('hidden');
+                    window.location.href = 'index.html';
+                    return;
+                }
+
+                // Get params from URL
+                const params = new URLSearchParams(window.location.search);
+                courseId = params.get('course');
+                lessonId = params.get('lesson');
+
+                if (!courseId || !lessonId) {
+                    showToast('No lesson specified', 'error');
+                    setTimeout(() => window.location.href = 'holiday-bootcamp.html', 1500);
+                    document.getElementById('loadingScreen').classList.add('hidden');
+                    return;
+                }
+
+                // Get course info
+                const courseDoc = await db.collection('bootcampCourses').doc(courseId).get();
+                const courseData = courseDoc.data();
+
+                if (!courseData) {
+                    showToast('Course not found', 'error');
+                    setTimeout(() => window.location.href = 'holiday-bootcamp.html', 1500);
+                    document.getElementById('loadingScreen').classList.add('hidden');
+                    return;
+                }
+
+                document.getElementById('courseName').textContent = courseData.title || 'Course';
+
+                // Get lesson data
+                const lessonDoc = await db.collection('bootcampLessons').doc(lessonId).get();
+                const lessonData = lessonDoc.data();
+
+                if (!lessonData) {
+                    // Create default lesson if not exists
+                    const defaultLesson = {
+                        title: 'Sample Lesson',
+                        audioUrl: '',
+                        description: 'This is a sample lesson. Upload audio to get started.',
+                        order: 1,
+                        quiz: {
+                            questions: [
+                                {
+                                    question: 'What is 2 + 2?',
+                                    options: ['2', '3', '4', '5'],
+                                    correctAnswer: 2
+                                },
+                                {
+                                    question: 'What is the capital of Nigeria?',
+                                    options: ['Lagos', 'Abuja', 'Kano', 'Ibadan'],
+                                    correctAnswer: 1
+                                }
+                            ]
+                        },
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    };
+
+                    await db.collection('bootcampLessons').doc(lessonId).set(defaultLesson);
+                    lessonData = defaultLesson;
+                }
+
+                // Display lesson
+                document.getElementById('lessonTitle').textContent = lessonData.title || 'Lesson';
+                document.getElementById('lessonNumber').textContent = lessonData.order || 1;
+                document.getElementById('audioTitle').textContent = lessonData.title || 'Audio Lesson';
+
+                // Set audio
+                const audio = document.getElementById('audioPlayer');
+                if (lessonData.audioUrl) {
+                    audio.src = lessonData.audioUrl;
+                } else {
+                    audio.src = '';
+                    audio.style.opacity = '0.5';
+                    audio.style.pointerEvents = 'none';
+                }
+
+                // Load quiz
+                if (lessonData.quiz && lessonData.quiz.questions) {
+                    loadQuiz(lessonData.quiz.questions);
+                } else {
+                    document.getElementById('quizContent').innerHTML = `
+                        <div class="text-muted" style="text-align:center;padding:1rem;">📝 No quiz available for this lesson</div>
+                    `;
+                }
+
+                // Initialize whiteboard
+                setTimeout(initWhiteboard, 200);
+                setTimeout(loadWhiteboard, 500);
+
+                // Load progress
+                await loadProgress();
+
+                document.getElementById('loadingScreen').classList.add('hidden');
+                document.getElementById('mainContent').classList.add('visible');
+
+            } catch (error) {
+                console.error('Error loading lesson:', error);
+                showToast('Error loading lesson', 'error');
+                document.getElementById('loadingScreen').classList.add('hidden');
+            }
+        }
+
+        async function loadProgress() {
+            try {
+                const user = auth.currentUser;
+                if (!user || !lessonId) return;
+
+                const snapshot = await db.collection('studentProgress')
+                    .where('studentId', '==', user.uid)
+                    .where('lessonId', '==', lessonId)
+                    .get();
+
+                if (!snapshot.empty) {
+                    snapshot.forEach(doc => {
+                        const data = doc.data();
+                        document.getElementById('lessonProgress').textContent = data.progress || 0;
+                        if (data.quizCompleted) {
+                            quizCompleted = true;
+                            quizScore = data.quizScore || 0;
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading progress:', error);
+            }
+        }
+
+        // ============================================================
+        // 🚪 NAVIGATION
+        // ============================================================
+
+        function nextLesson() {
+            showToast('⏳ Next lesson coming soon!', 'warning');
+        }
+
+        function prevLesson() {
+            showToast('⏳ Previous lesson coming soon!', 'warning');
+        }
+
+        // ============================================================
+        // 🚀 TOAST
+        // ============================================================
+
+        function showToast(message, type = 'info') {
+            const existing = document.querySelector('.toast');
+            if (existing) existing.remove();
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => { toast.remove(); }, 4000);
+        }
+
+        // ============================================================
+        // 🚀 AUTO-RUN
+        // ============================================================
+
+        auth.onAuthStateChanged(user => {
+            if (!user) {
+                document.getElementById('loadingScreen').classList.add('hidden');
+                window.location.href = 'index.html';
+            } else {
+                loadLesson();
+                // Auto-save whiteboard every 30 seconds
+                setInterval(() => {
+                    if (document.getElementById('tab-whiteboard').classList.contains('active')) {
+                        saveWhiteboard();
+                    }
+                }, 30000);
+            }
+        });
+
+        console.log('📚 Bootcamp Lesson loaded!');
+        console.log('🖍️ Whiteboard with full tools + Quiz + Audio');
+    </script>
+
+</body>
+</html>

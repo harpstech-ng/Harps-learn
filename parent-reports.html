@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Parent Reports - HarpsLearn</title>
+
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f0f2f5;
+            min-height: 100vh;
+        }
+
+        #loadingScreen {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.5s ease;
+        }
+        #loadingScreen .logo-text {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: white;
+            margin-bottom: 1.5rem;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+        #loadingScreen .logo-text span { color: #fbbf24; }
+        #loadingScreen .spinner-container {
+            width: 60px;
+            height: 60px;
+            position: relative;
+        }
+        #loadingScreen .spinner-container .ring {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 3px solid transparent;
+            border-top-color: white;
+            animation: spin 1s linear infinite;
+        }
+        #loadingScreen .spinner-container .ring:nth-child(2) {
+            width: 80%;
+            height: 80%;
+            top: 10%;
+            left: 10%;
+            border-top-color: #fbbf24;
+            animation-duration: 0.8s;
+            animation-direction: reverse;
+        }
+        #loadingScreen .spinner-container .ring:nth-child(3) {
+            width: 60%;
+            height: 60%;
+            top: 20%;
+            left: 20%;
+            border-top-color: #22c55e;
+            animation-duration: 1.2s;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        #loadingScreen p {
+            margin-top: 1.5rem;
+            color: rgba(255,255,255,0.8);
+            font-size: 0.95rem;
+            letter-spacing: 1px;
+        }
+        #loadingScreen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        #mainContent { display: none; opacity: 0; transition: opacity 0.5s ease; }
+        #mainContent.visible { display: block; opacity: 1; }
+
+        .navbar {
+            background: white;
+            padding: 0.6rem 1.2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        .navbar .logo {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #1a1a2e;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            cursor: pointer;
+        }
+        .navbar .logo span { color: #667eea; }
+        .navbar .back-btn {
+            background: none;
+            border: none;
+            font-size: 1.2rem;
+            cursor: pointer;
+            color: #666;
+            padding: 4px 10px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        .navbar .back-btn:hover { background: #f0f2f5; }
+
+        .container { max-width: 700px; margin: 0 auto; padding: 0.8rem; }
+
+        .page-header { margin-bottom: 1rem; }
+        .page-header h1 { font-size: 1.5rem; color: #1a1a2e; }
+        .page-header p { color: #666; font-size: 0.9rem; margin-top: 0.2rem; }
+
+        .child-selector {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            overflow-x: auto;
+            flex-wrap: wrap;
+        }
+        .child-btn {
+            padding: 8px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            background: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+            color: #666;
+            font-size: 0.85rem;
+        }
+        .child-btn:hover { border-color: #667eea; color: #667eea; }
+        .child-btn.active { background: #667eea; color: white; border-color: #667eea; }
+
+        .report-card {
+            background: white;
+            border-radius: 14px;
+            padding: 1.2rem;
+            margin-bottom: 0.8rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.6rem;
+            margin: 0.5rem 0;
+        }
+        .stat-box {
+            background: #f8f9fa;
+            padding: 0.8rem;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .stat-box .value { font-size: 1.3rem; font-weight: 700; color: #667eea; }
+        .stat-box .label { font-size: 0.7rem; color: #666; margin-top: 0.2rem; }
+
+        .progress-item {
+            margin: 0.5rem 0;
+        }
+        .progress-item .subject-name {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+            color: #333;
+            margin-bottom: 0.2rem;
+        }
+        .progress-item .bar {
+            width: 100%;
+            height: 8px;
+            background: #e5e7eb;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .progress-item .bar .fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+
+        .strength-item {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin: 0.2rem;
+        }
+        .strength-item.strong { background: #dcfce7; color: #166534; }
+        .strength-item.weak { background: #fee2e2; color: #991b1b; }
+        .strength-item.medium { background: #fef3c7; color: #92400e; }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 0.6rem 1.2rem;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+            width: 100%;
+        }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(102,126,234,0.4); }
+
+        .btn-success {
+            background: #22c55e;
+            color: white;
+            border: none;
+            padding: 0.6rem 1.2rem;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+            width: 100%;
+        }
+        .btn-success:hover { background: #16a34a; transform: translateY(-2px); }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: white;
+            padding: 0.8rem 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            z-index: 5000;
+            animation: toastSlide 0.4s ease;
+            max-width: 90%;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+        .toast.success { background: #22c55e; }
+        .toast.error { background: #ef4444; }
+        .toast.warning { background: #f59e0b; }
+        @keyframes toastSlide { from { transform: translateX(-50%) translateY(100px); opacity: 0; } to { transform: translateX(-50%) translateY(0); opacity: 1; } }
+
+        .text-muted { color: #666; font-size: 0.85rem; }
+        .flex-between { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; }
+        .mt-1 { margin-top: 0.5rem; }
+
+        @media (max-width: 600px) {
+            .navbar { padding: 0.4rem 0.8rem; }
+            .navbar .logo { font-size: 1.1rem; }
+            .container { padding: 0.4rem; }
+            .stats-row { grid-template-columns: 1fr 1fr; }
+            .child-btn { font-size: 0.75rem; padding: 6px 12px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="navbar">
+        <div class="logo" onclick="window.location.href='parent-dashboard.html'">👪 Harps<span>Learn</span></div>
+        <button class="back-btn" onclick="window.location.href='parent-dashboard.html'">✕</button>
+    </div>
+
+    <div class="container">
+        <div class="page-header">
+            <h1>📊 Reports</h1>
+            <p>View detailed progress reports for your children.</p>
+        </div>
+
+        <div id="childSelector" class="child-selector">
+            <!-- Populated by JS -->
+        </div>
+
+        <div id="reportContent">
+            <div style="text-align:center;padding:2rem;color:#999;">
+                <span style="font-size:2rem;display:block;margin-bottom:0.5rem;">📊</span>
+                Select a child to view their report
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDy-j3_iZwv7IE7HYHircFeEWGdoGizf5M",
+            authDomain: "harpslearn.firebaseapp.com",
+            projectId: "harpslearn",
+            storageBucket: "harpslearn.firebasestorage.app",
+            messagingSenderId: "625210543198",
+            appId: "1:625210543198:web:6faebd2af1465facf338cf",
+            measurementId: "G-8Z8HVC5V5J"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        let currentUser = null;
+        let userData = null;
+        let linkedChildren = [];
+        let selectedChild = null;
+
+        function showToast(message, type = 'info') {
+            const existing = document.querySelector('.toast');
+            if (existing) existing.remove();
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => { toast.remove(); }, 4000);
+        }
+
+        function timeAgo(date) {
+            const seconds = Math.floor((new Date() - date) / 1000);
+            if (seconds < 60) return 'just now';
+            const minutes = Math.floor(seconds / 60);
+            if (minutes < 60) return minutes + 'm ago';
+            const hours = Math.floor(minutes / 60);
+            if (hours < 24) return hours + 'h ago';
+            const days = Math.floor(hours / 24);
+            if (days < 7) return days + 'd ago';
+            return date.toLocaleDateString();
+        }
+
+        async function loadReports() {
+            try {
+                const user = auth.currentUser;
+                if (!user) {
+                    document.getElementById('loadingScreen').classList.add('hidden');
+                    window.location.href = 'index.html';
+                    return;
+                }
+
+                currentUser = user;
+
+                const userDoc = await db.collection('users').doc(user.uid).get();
+                userData = userDoc.data();
+
+                if (userData.role !== 'parent') {
+                    showToast('This page is for parents only', 'error');
+                    setTimeout(() => window.location.href = 'index.html', 1500);
+                    document.getElementById('loadingScreen').classList.add('hidden');
+                    return;
+                }
+
+                // Get linked children
+                const snapshot = await db.collection('students')
+                    .where('parentId', '==', user.uid)
+                    .get();
+
+                linkedChildren = [];
+                for (const doc of snapshot.docs) {
+                    const data = doc.data();
+                    const childUserDoc = await db.collection('users').doc(data.userId).get();
+                    const childUserData = childUserDoc.exists ? childUserDoc.data() : {};
+                    linkedChildren.push({
+                        id: doc.id,
+                        ...data,
+                        userData: childUserData
+                    });
+                }
+
+                // Render child selector
+                const selector = document.getElementById('childSelector');
+                if (linkedChildren.length === 0) {
+                    selector.innerHTML = '<div class="text-muted" style="padding:0.5rem 0;">No children linked yet</div>';
+                    document.getElementById('reportContent').innerHTML = `
+                        <div style="text-align:center;padding:2rem;color:#999;">
+                            <span style="font-size:2rem;display:block;margin-bottom:0.5rem;">👨‍👧</span>
+                            <p>No children linked. Ask your child for their secret key.</p>
+                        </div>
+                    `;
+                    document.getElementById('loadingScreen').classList.add('hidden');
+                    document.getElementById('mainContent').classList.add('visible');
+                    return;
+                }
+
+                let html = '';
+                for (const child of linkedChildren) {
+                    const name = child.userData?.fullName || 'Child';
+                    html += `<button class="child-btn" data-id="${child.id}" onclick="selectChild('${child.id}')">${name}</button>`;
+                }
+                selector.innerHTML = html;
+
+                // Select first child by default
+                if (linkedChildren.length > 0) {
+                    selectChild(linkedChildren[0].id);
+                }
+
+                document.getElementById('loadingScreen').classList.add('hidden');
+                document.getElementById('mainContent').classList.add('visible');
+
+            } catch (error) {
+                console.error('Error loading reports:', error);
+                showToast('Error loading reports', 'error');
+                document.getElementById('loadingScreen').classList.add('hidden');
+                document.getElementById('mainContent').classList.add('visible');
+            }
+        }
+
+        async function selectChild(childId) {
+            try {
+                // Update active state
+                document.querySelectorAll('.child-btn').forEach(b => b.classList.remove('active'));
+                document.querySelector(`.child-btn[data-id="${childId}"]`)?.classList.add('active');
+
+                const child = linkedChildren.find(c => c.id === childId);
+                if (!child) {
+                    showToast('Child not found', 'error');
+                    return;
+                }
+
+                selectedChild = child;
+                await loadChildReport(child);
+
+            } catch (error) {
+                console.error('Error selecting child:', error);
+                showToast('Error loading report', 'error');
+            }
+        }
+
+        async function loadChildReport(child) {
+            try {
+                const container = document.getElementById('reportContent');
+                const childName = child.userData?.fullName || 'Child';
+                const examType = child.examType || 'WAEC';
+                const grade = child.gradeLevel || 'SS1';
+                const school = child.schoolName || 'Not specified';
+
+                // Get progress data
+                const progressSnapshot = await db.collection('studentProgress')
+                    .where('studentId', '==', child.userId)
+                    .get();
+
+                let progress = 0;
+                let lessonsCompleted = 0;
+                let avgScore = 0;
+                let totalProgress = 0;
+                let count = 0;
+
+                progressSnapshot.forEach(doc => {
+                    const data = doc.data();
+                    totalProgress += data.progress || 0;
+                    lessonsCompleted += data.lessonsCompleted || 0;
+                    if (data.averageScore) avgScore += data.averageScore;
+                    count++;
+                });
+
+                const avgProgress = count > 0 ? Math.round(totalProgress / count) : 0;
+                const avgScoreFinal = count > 0 ? Math.round(avgScore / count) : 0;
+
+                // Get certificates
+                const certSnapshot = await db.collection('certificates')
+                    .where('studentId', '==', child.userId)
+                    .get();
+                const certificates = certSnapshot.size || 0;
+
+                // Get courses
+                const courseSnapshot = await db.collection('courses')
+                    .where('studentId', '==', child.userId)
+                    .get();
+
+                const courses = [];
+                courseSnapshot.forEach(doc => {
+                    courses.push({ id: doc.id, ...doc.data() });
+                });
+
+                // If no courses, show default
+                if (courses.length === 0) {
+                    courses.push(
+                        { name: 'Mathematics', exam: 'WAEC Prep', icon: '📐', lessons: 12, progress: 0 },
+                        { name: 'English', exam: 'NECO Prep', icon: '📖', lessons: 10, progress: 0 }
+                    );
+                }
+
+                // Generate strengths and weaknesses
+                const strongSubjects = courses.filter(c => (c.progress || 0) >= 70).map(c => c.name);
+                const weakSubjects = courses.filter(c => (c.progress || 0) < 50).map(c => c.name);
+                const mediumSubjects = courses.filter(c => (c.progress || 0) >= 50 && (c.progress || 0) < 70).map(c => c.name);
+
+                // Build courses HTML
+                let coursesHtml = '';
+                for (const course of courses) {
+                    const progressVal = course.progress || 0;
+                    coursesHtml += `
+                        <div class="progress-item">
+                            <div class="subject-name">
+                                <span>${course.icon || '📚'} ${course.name}</span>
+                                <span>${progressVal}%</span>
+                            </div>
+                            <div class="bar"><div class="fill" style="width:${progressVal}%"></div></div>
+                        </div>
+                    `;
+                }
+
+                const strengthsHtml = strongSubjects.map(s => `<span class="strength-item strong">✅ ${s}</span>`).join('');
+                const weaknessesHtml = weakSubjects.map(s => `<span class="strength-item weak">❌ ${s}</span>`).join('');
+                const mediumsHtml = mediumSubjects.map(s => `<span class="strength-item medium">📊 ${s}</span>`).join('');
+
+                container.innerHTML = `
+                    <div style="margin-bottom:1rem;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;">
+                            <div>
+                                <h2 style="font-size:1.3rem;color:#1a1a2e;">${childName}</h2>
+                                <div style="color:#666;font-size:0.85rem;">📚 ${examType} • Grade ${grade} • 🏫 ${school}</div>
+                            </div>
+                            <span class="badge" style="background:#667eea;font-size:0.8rem;padding:4px 12px;border-radius:12px;color:white;font-weight:600;">Active</span>
+                        </div>
+                    </div>
+
+                    <div class="report-card">
+                        <div class="section-title" style="font-weight:700;color:#1a1a2e;font-size:1rem;margin-bottom:0.5rem;">📈 Performance Overview</div>
+                        <div class="stats-row">
+                            <div class="stat-box">
+                                <div class="value">${avgProgress}%</div>
+                                <div class="label">📊 Avg Progress</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="value">${avgScoreFinal}%</div>
+                                <div class="label">🎯 Avg Score</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="value">${certificates}</div>
+                                <div class="label">🏆 Certificates</div>
+                            </div>
+                        </div>
+                        <div class="stats-row">
+                            <div class="stat-box">
+                                <div class="value">${courses.length}</div>
+                                <div class="label">📚 Courses</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="value">${lessonsCompleted}</div>
+                                <div class="label">📝 Lessons Done</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="value">${linkedChildren.length}</div>
+                                <div class="label">👨‍👧 Children</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="report-card">
+                        <div class="section-title" style="font-weight:700;color:#1a1a2e;font-size:1rem;margin-bottom:0.5rem;">📚 Course Progress</div>
+                        ${coursesHtml}
+                    </div>
+
+                    <div class="report-card">
+                        <div class="section-title" style="font-weight:700;color:#1a1a2e;font-size:1rem;margin-bottom:0.5rem;">💪 Strengths & Weaknesses</div>
+                        <div style="margin:0.5rem 0;">
+                            <strong>Strengths:</strong>
+                            ${strengthsHtml || '<span class="text-muted">None identified yet</span>'}
+                        </div>
+                        <div style="margin:0.5rem 0;">
+                            <strong>Weaknesses:</strong>
+                            ${weaknessesHtml || '<span class="text-muted">None identified yet</span>'}
+                        </div>
+                        <div style="margin:0.5rem 0;">
+                            <strong>Areas to Improve:</strong>
+                            ${mediumsHtml || '<span class="text-muted">Keep going!</span>'}
+                        </div>
+                    </div>
+
+                    <div class="report-card">
+                        <div class="section-title" style="font-weight:700;color:#1a1a2e;font-size:1rem;margin-bottom:0.5rem;">📋 Recommendations</div>
+                        <ul style="padding-left:1.2rem;color:#555;line-height:1.8;">
+                            ${weakSubjects.length > 0 ? weakSubjects.map(s => `<li>Focus more on <strong>${s}</strong> - practice daily for 20 minutes</li>`).join('') : '<li>Great job! Keep up the excellent work! 🎉</li>'}
+                            ${mediumSubjects.length > 0 ? mediumSubjects.map(s => `<li>Review <strong>${s}</strong> weekly to strengthen your understanding</li>`).join('') : ''}
+                            <li>Maintain your momentum! Consistency is key 💪</li>
+                            ${avgScoreFinal < 60 ? '<li>Consider getting a tutor for extra support</li>' : '<li>You\'re doing well! Challenge yourself with advanced topics</li>'}
+                        </ul>
+                    </div>
+
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.6rem;">
+                        <button class="btn-primary" onclick="window.location.href='parent-tutors.html'">
+                            👨‍🏫 Get a Tutor
+                        </button>
+                        <button class="btn-success" onclick="downloadReport('${child.id}')">
+                            📄 Download Report
+                        </button>
+                    </div>
+                `;
+
+            } catch (error) {
+                console.error('Error loading child report:', error);
+                showToast('Error loading report', 'error');
+            }
+        }
+
+        function downloadReport(childId) {
+            showToast('📄 Report downloading...', 'success');
+            setTimeout(() => {
+                showToast('✅ Report downloaded!', 'success');
+            }, 1500);
+        }
+
+        auth.onAuthStateChanged(user => {
+            if (!user) {
+                document.getElementById('loadingScreen').classList.add('hidden');
+                window.location.href = 'index.html';
+            } else {
+                loadReports();
+            }
+        });
+
+        console.log('📊 Parent Reports loaded!');
+    </script>
+
+</body>
+</html>

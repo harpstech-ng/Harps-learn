@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Book a Tutor - HarpsLearn</title>
+
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f0f2f5;
+            min-height: 100vh;
+        }
+
+        #loadingScreen {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: white;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        #loadingScreen .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        #loadingScreen p { margin-top: 1rem; color: #666; font-size: 0.9rem; }
+        #loadingScreen.hidden { display: none; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        #mainContent { display: none; }
+        #mainContent.visible { display: block; }
+
+        .navbar {
+            background: white;
+            padding: 0.6rem 1.2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        .navbar .logo {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #1a1a2e;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            cursor: pointer;
+        }
+        .navbar .logo span { color: #667eea; }
+        .navbar .back-btn {
+            background: none;
+            border: none;
+            font-size: 1.2rem;
+            cursor: pointer;
+            color: #666;
+            padding: 4px 10px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        .navbar .back-btn:hover { background: #f0f2f5; }
+
+        .container { max-width: 700px; margin: 0 auto; padding: 0.8rem; }
+
+        .page-header { margin-bottom: 1rem; }
+        .page-header h1 { font-size: 1.5rem; color: #1a1a2e; }
+        .page-header p { color: #666; font-size: 0.9rem; margin-top: 0.2rem; }
+
+        .booking-card {
+            background: white;
+            border-radius: 14px;
+            padding: 1.2rem;
+            margin-bottom: 0.8rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+        .booking-card .tutor-info {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #e5e7eb;
+            margin-bottom: 1rem;
+        }
+        .booking-card .tutor-info .avatar {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 1.5rem;
+            flex-shrink: 0;
+        }
+        .booking-card .tutor-info .avatar img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+        .booking-card .tutor-info .details { flex: 1; }
+        .booking-card .tutor-info .details .name { font-weight: 700; font-size: 1.1rem; color: #1a1a2e; }
+        .booking-card .tutor-info .details .subjects { font-size: 0.85rem; color: #666; }
+        .booking-card .tutor-info .details .rating { color: #f59e0b; font-size: 0.9rem; }
+        .booking-card .tutor-info .details .rate { color: #667eea; font-weight: 700; }
+
+        .form-group { margin-bottom: 1rem; }
+        .form-group label { display: block; font-weight: 600; margin-bottom: 0.3rem; color: #333; font-size: 0.9rem; }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 10px 14px;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            font-family: inherit;
+        }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .form-group textarea { min-height: 60px; resize: vertical; }
+
+        .price-breakdown {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 10px;
+            margin: 0.5rem 0;
+        }
+        .price-breakdown .row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.3rem 0;
+            font-size: 0.9rem;
+            color: #333;
+        }
+        .price-breakdown .row.total {
+            font-weight: 700;
+            font-size: 1.1rem;
+            border-top: 2px solid #e5e7eb;
+            padding-top: 0.5rem;
+            margin-top: 0.3rem;
+        }
+        .price-breakdown .row .amount { color: #667eea; }
+        .price-breakdown .row.total .amount { color: #667eea; font-size: 1.2rem; }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 0.7rem 1.2rem;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            font-size: 0.95rem;
+            width: 100%;
+        }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(102,126,234,0.4); }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+        .btn-secondary {
+            background: #f0f2f5;
+            color: #666;
+            border: none;
+            padding: 0.7rem 1.2rem;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            font-size: 0.95rem;
+            width: 100%;
+        }
+        .btn-secondary:hover { background: #e5e7eb; }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: white;
+            padding: 0.8rem 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            z-index: 5000;
+            animation: toastSlide 0.4s ease;
+            max-width: 90%;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+        .toast.success { background: #22c55e; }
+        .toast.error { background: #ef4444; }
+        .toast.warning { background: #f59e0b; }
+        @keyframes toastSlide { from { transform: translateX(-50%) translateY(100px); opacity: 0; } to { transform: translateX(-50%) translateY(0); opacity: 1; } }
+
+        .text-muted { color: #666; font-size: 0.85rem; }
+        .flex-between { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; }
+        .mt-1 { margin-top: 0.5rem; }
+        .hidden { display: none !important; }
+
+        .success-page {
+            text-align: center;
+            padding: 2rem 1rem;
+        }
+        .success-page .icon { font-size: 4rem; display: block; margin-bottom: 1rem; }
+        .success-page h2 { color: #1a1a2e; margin-bottom: 0.5rem; }
+        .success-page p { color: #666; font-size: 0.95rem; margin-bottom: 1rem; }
+
+        @media (max-width: 600px) {
+            .navbar { padding: 0.4rem 0.8rem; }
+            .navbar .logo { font-size: 1.1rem; }
+            .container { padding: 0.4rem; }
+            .booking-card { padding: 1rem; }
+            .tutor-info { flex-wrap: wrap; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ===== LOADING SCREEN ===== -->
+    <div id="loadingScreen">
+        <div class="spinner"></div>
+        <p>Loading booking...</p>
+    </div>
+
+    <!-- ===== MAIN CONTENT ===== -->
+    <div id="mainContent">
+
+        <div class="navbar">
+            <div class="logo" onclick="window.location.href='parent-dashboard.html'">👪 Harps<span>Learn</span></div>
+            <button class="back-btn" onclick="window.location.href='parent-tutors.html'">✕</button>
+        </div>
+
+        <div class="container">
+
+            <!-- Booking Form -->
+            <div id="bookingForm">
+                <div class="page-header">
+                    <h1>📚 Book a Tutor</h1>
+                    <p>Book a session for your child with a verified tutor.</p>
+                </div>
+
+                <div class="booking-card">
+                    <div class="tutor-info" id="tutorInfo">
+                        <div class="avatar" id="tutorAvatar">👤</div>
+                        <div class="details">
+                            <div class="name" id="tutorName">Loading tutor...</div>
+                            <div class="subjects" id="tutorSubjects">📚 Loading...</div>
+                            <div class="rating" id="tutorRating">⭐ 0.0</div>
+                            <div class="rate" id="tutorRate">₦0/hour</div>
+                        </div>
+                    </div>
+
+                    <form id="bookingFormFields">
+                        <div class="form-group">
+                            <label>Select Your Child</label>
+                            <select id="childSelect" required>
+                                <option value="">Select a child...</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Subject</label>
+                            <select id="subjectSelect" required>
+                                <option value="">Select subject...</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Date</label>
+                            <input type="date" id="bookingDate" required min="2025-01-01" />
+                        </div>
+
+                        <div class="form-group">
+                            <label>Time</label>
+                            <input type="time" id="bookingTime" required />
+                        </div>
+
+                        <div class="form-group">
+                            <label>Duration</label>
+                            <select id="bookingDuration">
+                                <option value="1">1 hour</option>
+                                <option value="1.5">1.5 hours</option>
+                                <option value="2">2 hours</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Location</label>
+                            <select id="bookingLocation">
+                                <option value="Online">💻 Online</option>
+                                <option value="Home">🏠 Home</option>
+                                <option value="Tutor's Location">📍 Tutor's Location</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Special Requests (Optional)</label>
+                            <textarea id="bookingNotes" placeholder="Any special instructions for the tutor..."></textarea>
+                        </div>
+
+                        <div class="price-breakdown">
+                            <div class="row">
+                                <span>Hourly Rate</span>
+                                <span class="amount" id="hourlyRateDisplay">₦0</span>
+                            </div>
+                            <div class="row">
+                                <span>Duration</span>
+                                <span class="amount" id="durationDisplay">1 hour</span>
+                            </div>
+                            <div class="row">
+                                <span>Platform Fee (5%)</span>
+                                <span class="amount" id="feeDisplay">₦0</span>
+                            </div>
+                            <div class="row total">
+                                <span>Total</span>
+                                <span class="amount" id="totalDisplay">₦0</span>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn-primary" id="bookBtn">💳 Confirm Booking</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Success Page -->
+            <div id="successPage" class="hidden">
+                <div class="booking-card success-page">
+                    <span class="icon">✅</span>
+                    <h2>Booking Confirmed! 🎉</h2>
+                    <p>Your child's lesson has been successfully booked. The tutor will contact you shortly.</p>
+                    <div style="background:#f8f9fa;padding:1rem;border-radius:10px;text-align:left;margin:1rem 0;">
+                        <p><strong>📚 Subject:</strong> <span id="confirmSubject">-</span></p>
+                        <p><strong>👨‍🏫 Tutor:</strong> <span id="confirmTutor">-</span></p>
+                        <p><strong>👨‍👧 Child:</strong> <span id="confirmChild">-</span></p>
+                        <p><strong>📅 Date:</strong> <span id="confirmDate">-</span></p>
+                        <p><strong>🕐 Time:</strong> <span id="confirmTime">-</span></p>
+                        <p><strong>📍 Location:</strong> <span id="confirmLocation">-</span></p>
+                        <p><strong>💰 Total:</strong> <span id="confirmTotal">-</span></p>
+                    </div>
+                    <button class="btn-primary" onclick="window.location.href='parent-dashboard.html'">🏠 Back to Dashboard</button>
+                    <button class="btn-secondary mt-1" onclick="window.location.href='parent-tutors.html'">👨‍🏫 Find Another Tutor</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDy-j3_iZwv7IE7HYHircFeEWGdoGizf5M",
+            authDomain: "harpslearn.firebaseapp.com",
+            projectId: "harpslearn",
+            storageBucket: "harpslearn.firebasestorage.app",
+            messagingSenderId: "625210543198",
+            appId: "1:625210543198:web:6faebd2af1465facf338cf",
+            measurementId: "G-8Z8HVC5V5J"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        let currentUser = null;
+        let tutorData = null;
+        let children = [];
+        let hourlyRate = 0;
+        let bookingId = null;
+
+        function showToast(message, type = 'info') {
+            const existing = document.querySelector('.toast');
+            if (existing) existing.remove();
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => { toast.remove(); }, 4000);
+        }
+
+        async function loadBooking() {
+            try {
+                const user = auth.currentUser;
+                if (!user) {
+                    document.getElementById('loadingScreen').classList.add('hidden');
+                    window.location.href = 'index.html';
+                    return;
+                }
+
+                currentUser = user;
+
+                const userDoc = await db.collection('users').doc(user.uid).get();
+                const userData = userDoc.data();
+
+                if (userData.role !== 'parent') {
+                    showToast('This page is for parents only', 'error');
+                    setTimeout(() => window.location.href = 'index.html', 1500);
+                    document.getElementById('loadingScreen').classList.add('hidden');
+                    return;
+                }
+
+                // Get tutor ID from URL
+                const params = new URLSearchParams(window.location.search);
+                const tutorId = params.get('tutor');
+
+                if (!tutorId) {
+                    showToast('No tutor selected', 'error');
+                    setTimeout(() => window.location.href = 'parent-tutors.html', 1500);
+                    document.getElementById('loadingScreen').classList.add('hidden');
+                    return;
+                }
+
+                // Load tutor info
+                const tutorDoc = await db.collection('tutors').doc(tutorId).get();
+                const tutorDataDoc = tutorDoc.data();
+
+                if (!tutorDataDoc) {
+                    showToast('Tutor not found', 'error');
+                    setTimeout(() => window.location.href = 'parent-tutors.html', 1500);
+                    document.getElementById('loadingScreen').classList.add('hidden');
+                    return;
+                }
+
+                // Get user info for tutor
+                const tutorUserDoc = await db.collection('users').doc(tutorDataDoc.userId).get();
+                const tutorUserData = tutorUserDoc.exists ? tutorUserDoc.data() : {};
+
+                tutorData = {
+                    id: tutorId,
+                    ...tutorDataDoc,
+                    userName: tutorUserData.fullName || 'Tutor',
+                    profilePic: tutorUserData.profilePic || ''
+                };
+
+                hourlyRate = tutorData.hourlyRate || 5000;
+
+                // Update tutor info
+                document.getElementById('tutorName').textContent = tutorData.userName;
+                document.getElementById('tutorSubjects').textContent = `📚 ${Array.isArray(tutorData.subjects) ? tutorData.subjects.join(', ') : 'Multiple subjects'}`;
+                document.getElementById('tutorRating').textContent = `⭐ ${tutorData.rating || 0} (${tutorData.totalStudents || 0} students)`;
+                document.getElementById('tutorRate').textContent = `₦${hourlyRate.toLocaleString()}/hour`;
+
+                if (tutorData.profilePic) {
+                    document.getElementById('tutorAvatar').innerHTML = `<img src="${tutorData.profilePic}" alt="${tutorData.userName}" />`;
+                } else {
+                    document.getElementById('tutorAvatar').textContent = tutorData.userName.charAt(0).toUpperCase();
+                }
+
+                // Load children
+                await loadChildren(user.uid);
+
+                // Load subjects
+                loadSubjects();
+
+                // Set min date
+                const today = new Date();
+                const minDate = today.toISOString().split('T')[0];
+                document.getElementById('bookingDate').min = minDate;
+
+                // Calculate price on change
+                document.getElementById('bookingDuration').addEventListener('change', calculatePrice);
+                document.getElementById('bookingDate').addEventListener('change', calculatePrice);
+                document.getElementById('bookingTime').addEventListener('change', calculatePrice);
+                document.getElementById('subjectSelect').addEventListener('change', calculatePrice);
+
+                calculatePrice();
+
+                document.getElementById('loadingScreen').classList.add('hidden');
+                document.getElementById('mainContent').classList.add('visible');
+
+            } catch (error) {
+                console.error('Error loading booking:', error);
+                showToast('Error loading booking', 'error');
+                document.getElementById('loadingScreen').classList.add('hidden');
+            }
+        }
+
+        async function loadChildren(parentId) {
+            try {
+                const snapshot = await db.collection('students')
+                    .where('parentId', '==', parentId)
+                    .get();
+
+                children = [];
+                for (const doc of snapshot.docs) {
+                    const data = doc.data();
+                    const userDoc = await db.collection('users').doc(data.userId).get();
+                    const userData = userDoc.exists ? userDoc.data() : {};
+                    children.push({
+                        id: data.userId,
+                        name: userData.fullName || 'Child',
+                        examType: data.examType || 'WAEC'
+                    });
+                }
+
+                const select = document.getElementById('childSelect');
+                select.innerHTML = '<option value="">Select a child...</option>';
+                for (const child of children) {
+                    select.innerHTML += `<option value="${child.id}">${child.name} (${child.examType})</option>`;
+                }
+
+                if (children.length === 0) {
+                    select.innerHTML = '<option value="">No children linked. Please link a child first.</option>';
+                }
+
+            } catch (error) {
+                console.error('Error loading children:', error);
+            }
+        }
+
+        function loadSubjects() {
+            const subjects = tutorData.subjects || ['Mathematics', 'English', 'Physics'];
+            const select = document.getElementById('subjectSelect');
+            select.innerHTML = '<option value="">Select subject...</option>';
+            for (const subject of subjects) {
+                select.innerHTML += `<option value="${subject}">${subject}</option>`;
+            }
+        }
+
+        function calculatePrice() {
+            const duration = parseFloat(document.getElementById('bookingDuration').value) || 1;
+            const fee = Math.round(hourlyRate * duration * 0.05);
+            const total = hourlyRate * duration + fee;
+
+            document.getElementById('hourlyRateDisplay').textContent = `₦${hourlyRate.toLocaleString()}`;
+            document.getElementById('durationDisplay').textContent = `${duration} hour${duration > 1 ? 's' : ''}`;
+            document.getElementById('feeDisplay').textContent = `₦${fee.toLocaleString()}`;
+            document.getElementById('totalDisplay').textContent = `₦${total.toLocaleString()}`;
+        }
+
+        document.getElementById('bookingFormFields').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const childId = document.getElementById('childSelect').value;
+            const subject = document.getElementById('subjectSelect').value;
+            const date = document.getElementById('bookingDate').value;
+            const time = document.getElementById('bookingTime').value;
+            const duration = parseFloat(document.getElementById('bookingDuration').value);
+            const location = document.getElementById('bookingLocation').value;
+            const notes = document.getElementById('bookingNotes').value;
+
+            if (!childId) {
+                showToast('Please select a child', 'error');
+                return;
+            }
+
+            if (!subject) {
+                showToast('Please select a subject', 'error');
+                return;
+            }
+
+            if (!date || !time) {
+                showToast('Please select date and time', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('bookBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ Processing...';
+
+            try {
+                const user = auth.currentUser;
+                if (!user) return;
+
+                const fee = Math.round(hourlyRate * duration * 0.05);
+                const total = hourlyRate * duration + fee;
+
+                const bookingData = {
+                    parentId: user.uid,
+                    tutorId: tutorData.id,
+                    tutorName: tutorData.userName,
+                    studentId: childId,
+                    childName: children.find(c => c.id === childId)?.name || 'Child',
+                    subject: subject,
+                    date: date,
+                    time: time,
+                    duration: duration,
+                    location: location,
+                    notes: notes,
+                    hourlyRate: hourlyRate,
+                    fee: fee,
+                    total: total,
+                    status: 'pending',
+                    paymentStatus: 'pending',
+                    gpsVerified: false,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                };
+
+                const docRef = await db.collection('bookings').add(bookingData);
+                bookingId = docRef.id;
+
+                // Send notification to tutor
+                await db.collection('notifications').add({
+                    userId: tutorData.userId,
+                    title: '📅 New Booking Request',
+                    message: `${bookingData.childName} (${bookingData.subject}) wants to book a lesson with you on ${date} at ${time}`,
+                    type: 'booking',
+                    bookingId: docRef.id,
+                    read: false,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                // Send notification to parent
+                await db.collection('notifications').add({
+                    userId: user.uid,
+                    title: '✅ Booking Request Sent',
+                    message: `Your booking for ${bookingData.childName} (${bookingData.subject}) has been sent to ${bookingData.tutorName}.`,
+                    type: 'booking',
+                    bookingId: docRef.id,
+                    read: false,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                // Show success
+                document.getElementById('bookingForm').classList.add('hidden');
+                document.getElementById('successPage').classList.remove('hidden');
+
+                document.getElementById('confirmSubject').textContent = subject;
+                document.getElementById('confirmTutor').textContent = tutorData.userName;
+                document.getElementById('confirmChild').textContent = children.find(c => c.id === childId)?.name || 'Child';
+                document.getElementById('confirmDate').textContent = date;
+                document.getElementById('confirmTime').textContent = time;
+                document.getElementById('confirmLocation').textContent = location;
+                document.getElementById('confirmTotal').textContent = `₦${total.toLocaleString()}`;
+
+                showToast('✅ Booking confirmed!', 'success');
+
+            } catch (error) {
+                console.error('Error booking:', error);
+                showToast('Error booking: ' + error.message, 'error');
+                btn.disabled = false;
+                btn.textContent = '💳 Confirm Booking';
+            }
+        });
+
+        auth.onAuthStateChanged(user => {
+            if (!user) {
+                document.getElementById('loadingScreen').classList.add('hidden');
+                window.location.href = 'index.html';
+            } else {
+                loadBooking();
+            }
+        });
+
+        console.log('📚 Parent Book Now loaded!');
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Tutor Leaderboard - HarpsLearn</title>
+
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f0f2f5;
+            min-height: 100vh;
+        }
+
+        .navbar {
+            background: white;
+            padding: 0.6rem 1.2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        .navbar .logo {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #1a1a2e;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            cursor: pointer;
+        }
+        .navbar .logo span { color: #667eea; }
+        .navbar .back-btn {
+            background: none;
+            border: none;
+            font-size: 1.2rem;
+            cursor: pointer;
+            color: #666;
+            padding: 4px 10px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        .navbar .back-btn:hover { background: #f0f2f5; }
+
+        .container { max-width: 700px; margin: 0 auto; padding: 0.8rem; }
+
+        .page-header { margin-bottom: 1rem; }
+        .page-header h1 { font-size: 1.5rem; color: #1a1a2e; }
+        .page-header p { color: #666; font-size: 0.9rem; margin-top: 0.2rem; }
+
+        .filter-section {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            overflow-x: auto;
+            padding: 0.2rem 0;
+        }
+        .filter-btn {
+            padding: 6px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 20px;
+            background: white;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+            color: #666;
+        }
+        .filter-btn:hover { border-color: #667eea; color: #667eea; }
+        .filter-btn.active { background: #667eea; color: white; border-color: #667eea; }
+
+        .leaderboard-item {
+            background: white;
+            border-radius: 14px;
+            padding: 0.8rem 1rem;
+            margin-bottom: 0.5rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .leaderboard-item:hover { transform: translateX(4px); box-shadow: 0 4px 16px rgba(0,0,0,0.1); }
+
+        .leaderboard-item .rank {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.85rem;
+            flex-shrink: 0;
+        }
+        .leaderboard-item .rank.gold { background: #fef3c7; color: #92400e; }
+        .leaderboard-item .rank.silver { background: #f3f4f6; color: #4b5563; }
+        .leaderboard-item .rank.bronze { background: #fde68a; color: #78350f; }
+        .leaderboard-item .rank.normal { background: #f0f2f5; color: #666; }
+        .leaderboard-item .rank.top1 { background: linear-gradient(135deg, #f59e0b, #d97706); color: white; font-size: 1.1rem; }
+        .leaderboard-item .rank.top2 { background: linear-gradient(135deg, #9ca3af, #6b7280); color: white; font-size: 1rem; }
+        .leaderboard-item .rank.top3 { background: linear-gradient(135deg, #d97706, #b45309); color: white; font-size: 1rem; }
+
+        .leaderboard-item .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 1rem;
+            flex-shrink: 0;
+            object-fit: cover;
+            overflow: hidden;
+        }
+        .leaderboard-item .avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+        .leaderboard-item .info { flex: 1; }
+        .leaderboard-item .info .name { font-weight: 600; color: #1a1a2e; font-size: 0.95rem; }
+        .leaderboard-item .info .details { font-size: 0.75rem; color: #666; }
+        .leaderboard-item .info .badge {
+            display: inline-block;
+            padding: 1px 8px;
+            border-radius: 10px;
+            font-size: 0.6rem;
+            font-weight: 600;
+            margin-left: 4px;
+        }
+        .leaderboard-item .info .badge.verified { background: #dcfce7; color: #166534; }
+        .leaderboard-item .info .badge.pending { background: #fef3c7; color: #92400e; }
+
+        .leaderboard-item .score { text-align: right; }
+        .leaderboard-item .score .value { font-weight: 700; color: #667eea; font-size: 1.1rem; }
+        .leaderboard-item .score .label { font-size: 0.65rem; color: #999; }
+
+        .current-tutor {
+            background: #e8eaf6;
+            border: 2px solid #667eea;
+            border-radius: 14px;
+            padding: 0.8rem 1rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+        }
+        .current-tutor .rank {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #667eea;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.85rem;
+            flex-shrink: 0;
+        }
+        .current-tutor .info { flex: 1; }
+        .current-tutor .info .name { font-weight: 700; color: #1a1a2e; font-size: 0.95rem; }
+        .current-tutor .info .details { font-size: 0.75rem; color: #666; }
+        .current-tutor .score .value { font-weight: 700; color: #667eea; font-size: 1.1rem; }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: white;
+            padding: 0.8rem 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            z-index: 5000;
+            animation: toastSlide 0.4s ease;
+            max-width: 90%;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+        .toast.success { background: #22c55e; }
+        .toast.error { background: #ef4444; }
+        .toast.warning { background: #f59e0b; }
+        @keyframes toastSlide { from { transform: translateX(-50%) translateY(100px); opacity: 0; } to { transform: translateX(-50%) translateY(0); opacity: 1; } }
+
+        .text-muted { color: #666; font-size: 0.85rem; }
+        .flex-between { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; }
+
+        @media (max-width: 600px) {
+            .navbar { padding: 0.4rem 0.8rem; }
+            .navbar .logo { font-size: 1.1rem; }
+            .container { padding: 0.4rem; }
+            .leaderboard-item { padding: 0.6rem 0.8rem; flex-wrap: wrap; }
+            .leaderboard-item .rank { width: 28px; height: 28px; font-size: 0.75rem; }
+            .leaderboard-item .avatar { width: 34px; height: 34px; font-size: 0.8rem; }
+            .filter-section { gap: 0.3rem; }
+            .filter-btn { padding: 4px 12px; font-size: 0.7rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="navbar">
+        <div class="logo" onclick="window.location.href='tutor-dashboard.html'">👨‍🏫 Harps<span>Learn</span></div>
+        <button class="back-btn" onclick="window.location.href='tutor-dashboard.html'">✕</button>
+    </div>
+
+    <div class="container">
+        <div class="page-header">
+            <h1>🏆 Tutor Leaderboard</h1>
+            <p>See the top tutors across Africa. Ranked by rating, students, earnings, and sessions.</p>
+        </div>
+
+        <div class="filter-section">
+            <button class="filter-btn active" data-filter="rating">⭐ Rating</button>
+            <button class="filter-btn" data-filter="students">👨‍🎓 Students</button>
+            <button class="filter-btn" data-filter="earnings">💰 Earnings</button>
+            <button class="filter-btn" data-filter="sessions">✅ Sessions</button>
+        </div>
+
+        <div id="currentTutorRank">
+            <div style="text-align:center;padding:1rem;color:#999;">
+                <span style="font-size:1.5rem;display:block;margin-bottom:0.3rem;">🏃</span>
+                Loading your rank...
+            </div>
+        </div>
+
+        <div id="leaderboardList">
+            <div style="text-align:center;padding:2rem;color:#999;">
+                <span style="font-size:2rem;display:block;margin-bottom:0.5rem;">🏆</span>
+                Loading tutor leaderboard...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDy-j3_iZwv7IE7HYHircFeEWGdoGizf5M",
+            authDomain: "harpslearn.firebaseapp.com",
+            projectId: "harpslearn",
+            storageBucket: "harpslearn.firebasestorage.app",
+            messagingSenderId: "625210543198",
+            appId: "1:625210543198:web:6faebd2af1465facf338cf",
+            measurementId: "G-8Z8HVC5V5J"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        let allTutors = [];
+        let currentFilter = 'rating';
+
+        function showToast(message, type = 'info') {
+            const existing = document.querySelector('.toast');
+            if (existing) existing.remove();
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => { toast.remove(); }, 4000);
+        }
+
+        async function loadTutorLeaderboard() {
+            try {
+                const user = auth.currentUser;
+                if (!user) { window.location.href = 'index.html'; return; }
+
+                // Get all tutors
+                const snapshot = await db.collection('tutors').get();
+
+                allTutors = [];
+                for (const doc of snapshot.docs) {
+                    const data = doc.data();
+                    
+                    // Get user info
+                    const userDoc = await db.collection('users').doc(data.userId).get();
+                    const userData = userDoc.exists ? userDoc.data() : {};
+                    
+                    allTutors.push({
+                        id: doc.id,
+                        userId: data.userId,
+                        userName: userData.fullName || 'Tutor',
+                        userEmail: userData.email || '',
+                        profilePic: userData.profilePic || '',
+                        rating: data.rating || 0,
+                        totalStudents: data.totalStudents || 0,
+                        totalEarnings: data.totalEarnings || 0,
+                        completedSessions: data.completedSessions || 0,
+                        isVerified: data.isVerified || false,
+                        verificationStatus: data.verificationStatus || 'pending',
+                        subjects: data.subjects || [],
+                        hourlyRate: data.hourlyRate || 0
+                    });
+                }
+
+                // Sort by rating (default)
+                sortTutors('rating');
+                renderCurrentTutor(user.uid);
+                renderLeaderboard(allTutors);
+
+            } catch (error) {
+                console.error('Error loading tutor leaderboard:', error);
+                showToast('Error loading leaderboard', 'error');
+                document.getElementById('leaderboardList').innerHTML = `
+                    <div class="text-muted" style="padding:2rem;text-align:center;">📭 Error loading leaderboard. Please refresh.</div>
+                `;
+            }
+        }
+
+        function sortTutors(criteria) {
+            currentFilter = criteria;
+            
+            switch(criteria) {
+                case 'rating':
+                    allTutors.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+                    break;
+                case 'students':
+                    allTutors.sort((a, b) => (b.totalStudents || 0) - (a.totalStudents || 0));
+                    break;
+                case 'earnings':
+                    allTutors.sort((a, b) => (b.totalEarnings || 0) - (a.totalEarnings || 0));
+                    break;
+                case 'sessions':
+                    allTutors.sort((a, b) => (b.completedSessions || 0) - (a.completedSessions || 0));
+                    break;
+                default:
+                    allTutors.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+            }
+        }
+
+        function renderCurrentTutor(userId) {
+            const container = document.getElementById('currentTutorRank');
+            
+            const index = allTutors.findIndex(t => t.userId === userId);
+            if (index === -1) {
+                container.innerHTML = `
+                    <div class="text-muted" style="padding:1rem;text-align:center;">📊 You're not on the leaderboard yet. Keep teaching!</div>
+                `;
+                return;
+            }
+
+            const tutor = allTutors[index];
+            const rank = index + 1;
+            const name = tutor.userName || 'You';
+            const value = getValueForFilter(tutor, currentFilter);
+            const label = getLabelForFilter(currentFilter);
+
+            container.innerHTML = `
+                <div class="current-tutor">
+                    <div class="rank">#${rank}</div>
+                    <div class="info">
+                        <div class="name">${name} 👋</div>
+                        <div class="details">${label}: ${formatValue(value, currentFilter)}</div>
+                    </div>
+                    <div class="score">
+                        <div class="value">${formatValue(value, currentFilter)}</div>
+                        <div class="label">${label}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderLeaderboard(tutors) {
+            const container = document.getElementById('leaderboardList');
+
+            // Filter out unverified tutors (optional - show only verified)
+            const verifiedTutors = tutors.filter(t => t.verificationStatus === 'approved');
+
+            if (!verifiedTutors || verifiedTutors.length === 0) {
+                container.innerHTML = `
+                    <div class="text-muted" style="padding:2rem;text-align:center;">📭 No verified tutors yet</div>
+                `;
+                return;
+            }
+
+            let html = '';
+            const topTutors = verifiedTutors.slice(0, 20);
+
+            for (let i = 0; i < topTutors.length; i++) {
+                const tutor = topTutors[i];
+                const rank = i + 1;
+                const name = tutor.userName || 'Tutor';
+                const initial = name.charAt(0).toUpperCase();
+                const value = getValueForFilter(tutor, currentFilter);
+                const label = getLabelForFilter(currentFilter);
+                const verified = tutor.isVerified ? '<span class="badge verified">✅ Verified</span>' : '<span class="badge pending">⏳ Pending</span>';
+
+                let rankClass = 'normal';
+                let rankEmoji = '';
+                if (rank === 1) { rankClass = 'top1'; rankEmoji = '🥇'; }
+                else if (rank === 2) { rankClass = 'top2'; rankEmoji = '🥈'; }
+                else if (rank === 3) { rankClass = 'top3'; rankEmoji = '🥉'; }
+                else if (rank <= 5) { rankClass = 'gold'; }
+                else if (rank <= 10) { rankClass = 'silver'; }
+                else if (rank <= 20) { rankClass = 'bronze'; }
+
+                const subjects = Array.isArray(tutor.subjects) ? tutor.subjects.slice(0, 3).join(', ') : 'Multiple subjects';
+
+                html += `
+                    <div class="leaderboard-item" onclick="viewTutor('${tutor.userId}')">
+                        <div class="rank ${rankClass}">${rankEmoji || rank}</div>
+                        <div class="avatar">
+                            ${tutor.profilePic ? `<img src="${tutor.profilePic}" alt="${name}" />` : initial}
+                        </div>
+                        <div class="info">
+                            <div class="name">${name} ${verified}</div>
+                            <div class="details">📚 ${subjects}</div>
+                            <div class="details">⭐ ${tutor.rating || 0} rating • 👨‍🎓 ${tutor.totalStudents || 0} students</div>
+                        </div>
+                        <div class="score">
+                            <div class="value">${formatValue(value, currentFilter)}</div>
+                            <div class="label">${label}</div>
+                        </div>
+                    </div>
+                `;
+            }
+            container.innerHTML = html;
+        }
+
+        function getValueForFilter(tutor, filter) {
+            switch(filter) {
+                case 'rating': return tutor.rating || 0;
+                case 'students': return tutor.totalStudents || 0;
+                case 'earnings': return tutor.totalEarnings || 0;
+                case 'sessions': return tutor.completedSessions || 0;
+                default: return tutor.rating || 0;
+            }
+        }
+
+        function getLabelForFilter(filter) {
+            switch(filter) {
+                case 'rating': return 'Rating';
+                case 'students': return 'Students';
+                case 'earnings': return 'Earnings';
+                case 'sessions': return 'Sessions';
+                default: return 'Rating';
+            }
+        }
+
+        function formatValue(value, filter) {
+            if (filter === 'earnings') {
+                return '₦' + value.toLocaleString();
+            }
+            if (filter === 'rating') {
+                return value.toFixed(1) + ' ⭐';
+            }
+            return value;
+        }
+
+        function viewTutor(userId) {
+            showToast('👁️ Tutor profile coming soon!', 'warning');
+        }
+
+        // Filter functionality
+        document.querySelector('.filter-section').addEventListener('click', function(e) {
+            if (e.target.classList.contains('filter-btn')) {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                
+                const filter = e.target.dataset.filter;
+                sortTutors(filter);
+                
+                const user = auth.currentUser;
+                if (user) {
+                    renderCurrentTutor(user.uid);
+                }
+                renderLeaderboard(allTutors);
+            }
+        });
+
+        auth.onAuthStateChanged(user => {
+            if (!user) { window.location.href = 'index.html'; }
+            else { loadTutorLeaderboard(); }
+        });
+
+        console.log('🏆 Tutor Leaderboard loaded!');
+        console.log('📁 Ranking tutors by rating, students, earnings, and sessions!');
+    </script>
+
+</body>
+</html>

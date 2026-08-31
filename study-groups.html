@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Study Groups - HarpsLearn</title>
+
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f0f2f5;
+            min-height: 100vh;
+        }
+
+        .navbar {
+            background: white;
+            padding: 0.6rem 1.2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        .navbar .logo {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #1a1a2e;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            cursor: pointer;
+        }
+        .navbar .logo span { color: #667eea; }
+        .navbar .back-btn {
+            background: none;
+            border: none;
+            font-size: 1.2rem;
+            cursor: pointer;
+            color: #666;
+            padding: 4px 10px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        .navbar .back-btn:hover { background: #f0f2f5; }
+
+        .container { max-width: 700px; margin: 0 auto; padding: 0.8rem; }
+
+        .page-header { margin-bottom: 1rem; }
+        .page-header h1 { font-size: 1.5rem; color: #1a1a2e; }
+        .page-header p { color: #666; font-size: 0.9rem; margin-top: 0.2rem; }
+
+        .create-group-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            margin-bottom: 1rem;
+        }
+        .create-group-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(102,126,234,0.4); }
+
+        .group-card {
+            background: white;
+            border-radius: 14px;
+            padding: 1rem;
+            margin-bottom: 0.8rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .group-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
+        .group-card .group-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            gap: 0.5rem;
+        }
+        .group-card .group-name { font-weight: 700; color: #1a1a2e; font-size: 1.05rem; }
+        .group-card .group-subject { color: #667eea; font-size: 0.8rem; font-weight: 600; }
+        .group-card .group-members { color: #666; font-size: 0.8rem; margin: 0.2rem 0; }
+        .group-card .group-desc { color: #666; font-size: 0.85rem; margin: 0.3rem 0; line-height: 1.4; }
+        .group-card .group-tags {
+            display: flex;
+            gap: 0.4rem;
+            flex-wrap: wrap;
+            margin: 0.3rem 0;
+        }
+        .group-card .group-tags span {
+            background: #f0f2f5;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            color: #666;
+        }
+        .group-card .group-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+            flex-wrap: wrap;
+        }
+        .group-card .group-actions button {
+            padding: 4px 14px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .group-card .group-actions .btn-join {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+        .group-card .group-actions .btn-join:hover { transform: scale(1.05); }
+        .group-card .group-actions .btn-joined {
+            background: #22c55e;
+            color: white;
+        }
+        .group-card .group-actions .btn-chat {
+            background: #f0f2f5;
+            color: #666;
+        }
+        .group-card .group-actions .btn-chat:hover { background: #e5e7eb; }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 0.65rem;
+            font-weight: 600;
+        }
+        .badge.active { background: #dcfce7; color: #166534; }
+        .badge.full { background: #fee2e2; color: #991b1b; }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: white;
+            padding: 0.8rem 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            z-index: 5000;
+            animation: toastSlide 0.4s ease;
+            max-width: 90%;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+        .toast.success { background: #22c55e; }
+        .toast.error { background: #ef4444; }
+        .toast.warning { background: #f59e0b; }
+        @keyframes toastSlide { from { transform: translateX(-50%) translateY(100px); opacity: 0; } to { transform: translateX(-50%) translateY(0); opacity: 1; } }
+
+        .text-muted { color: #666; font-size: 0.85rem; }
+        .flex-between { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; }
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 3000;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            max-width: 500px;
+            width: 100%;
+            max-height: 80vh;
+            overflow-y: auto;
+            animation: slideUp 0.3s ease;
+        }
+        @keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .modal h3 { font-size: 1.3rem; color: #1a1a2e; margin-bottom: 1rem; }
+        .modal .form-group { margin-bottom: 1rem; }
+        .modal .form-group label { display: block; font-weight: 600; margin-bottom: 0.3rem; color: #333; font-size: 0.9rem; }
+        .modal .form-group input, .modal .form-group select, .modal .form-group textarea {
+            width: 100%;
+            padding: 10px 14px;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            font-family: inherit;
+        }
+        .modal .form-group input:focus, .modal .form-group select:focus, .modal .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .modal .form-group textarea { min-height: 80px; resize: vertical; }
+        .modal .modal-actions { display: flex; gap: 0.5rem; margin-top: 1rem; }
+        .modal .modal-actions button { flex: 1; padding: 10px; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; }
+        .modal .modal-actions .btn-primary { background: linear-gradient(135deg, #667eea, #764ba2); color: white; }
+        .modal .modal-actions .btn-secondary { background: #f0f2f5; color: #666; }
+
+        @media (max-width: 600px) {
+            .navbar { padding: 0.4rem 0.8rem; }
+            .navbar .logo { font-size: 1.1rem; }
+            .container { padding: 0.4rem; }
+            .modal { padding: 1.5rem; margin: 0.5rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="navbar">
+        <div class="logo" onclick="window.location.href='student-dashboard.html'">🎓 Harps<span>Learn</span></div>
+        <button class="back-btn" onclick="window.location.href='student-dashboard.html'">✕</button>
+    </div>
+
+    <div class="container">
+        <div class="page-header">
+            <h1>👥 Study Groups</h1>
+            <p>Join study groups with classmates. Learn together, grow together!</p>
+        </div>
+
+        <button class="create-group-btn" onclick="openCreateGroup()">➕ Create Study Group</button>
+
+        <div id="groupsList">
+            <div style="text-align:center;padding:2rem;color:#999;">
+                <span style="font-size:2rem;display:block;margin-bottom:0.5rem;">👥</span>
+                Loading study groups...
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Group Modal -->
+    <div class="modal-overlay" id="createGroupModal">
+        <div class="modal">
+            <h3>📝 Create Study Group</h3>
+            <form id="createGroupForm">
+                <div class="form-group">
+                    <label>Group Name</label>
+                    <input type="text" id="groupName" required placeholder="e.g., WAEC Math Masters" />
+                </div>
+                <div class="form-group">
+                    <label>Subject</label>
+                    <select id="groupSubject" required>
+                        <option value="">Select subject</option>
+                        <option value="Mathematics">Mathematics</option>
+                        <option value="English">English</option>
+                        <option value="Physics">Physics</option>
+                        <option value="Chemistry">Chemistry</option>
+                        <option value="Biology">Biology</option>
+                        <option value="Economics">Economics</option>
+                        <option value="Government">Government</option>
+                        <option value="History">History</option>
+                        <option value="Geography">Geography</option>
+                        <option value="Literature">Literature</option>
+                        <option value="CRS">CRS/IRS</option>
+                        <option value="French">French</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Exam Type</label>
+                    <select id="groupExam" required>
+                        <option value="">Select exam</option>
+                        <option value="WAEC">WAEC</option>
+                        <option value="NECO">NECO</option>
+                        <option value="BECE">BECE</option>
+                        <option value="KCSE">KCSE</option>
+                        <option value="JAMB">JAMB</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="groupDesc" placeholder="What is this study group about?"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Max Members</label>
+                    <input type="number" id="groupMax" value="10" min="2" max="20" />
+                </div>
+                <div class="modal-actions">
+                    <button type="submit" class="btn-primary">Create Group</button>
+                    <button type="button" class="btn-secondary" onclick="closeCreateGroup()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDy-j3_iZwv7IE7HYHircFeEWGdoGizf5M",
+            authDomain: "harpslearn.firebaseapp.com",
+            projectId: "harpslearn",
+            storageBucket: "harpslearn.firebasestorage.app",
+            messagingSenderId: "625210543198",
+            appId: "1:625210543198:web:6faebd2af1465facf338cf",
+            measurementId: "G-8Z8HVC5V5J"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        let allGroups = [];
+        let userGroups = new Set();
+
+        function showToast(message, type = 'info') {
+            const existing = document.querySelector('.toast');
+            if (existing) existing.remove();
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => { toast.remove(); }, 4000);
+        }
+
+        async function loadGroups() {
+            try {
+                const user = auth.currentUser;
+                if (!user) { window.location.href = 'index.html'; return; }
+
+                const snapshot = await db.collection('studyGroups')
+                    .orderBy('createdAt', 'desc')
+                    .get();
+
+                allGroups = [];
+                snapshot.forEach(doc => {
+                    allGroups.push({ id: doc.id, ...doc.data() });
+                });
+
+                // Get user's joined groups
+                const joinedSnapshot = await db.collection('groupMembers')
+                    .where('userId', '==', user.uid)
+                    .get();
+
+                joinedSnapshot.forEach(doc => {
+                    userGroups.add(doc.data().groupId);
+                });
+
+                renderGroups(allGroups);
+
+            } catch (error) {
+                console.error('Error loading groups:', error);
+                showToast('Error loading groups', 'error');
+            }
+        }
+
+        function renderGroups(groups) {
+            const container = document.getElementById('groupsList');
+
+            if (!groups || groups.length === 0) {
+                container.innerHTML = `
+                    <div class="text-muted" style="padding:2rem;text-align:center;">
+                        📭 No study groups yet.<br>
+                        Be the first to create one!
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '';
+            for (const group of groups) {
+                const isJoined = userGroups.has(group.id);
+                const memberCount = group.members || 0;
+                const maxMembers = group.maxMembers || 10;
+                const isFull = memberCount >= maxMembers;
+                const status = isFull ? 'full' : 'active';
+
+                html += `
+                    <div class="group-card">
+                        <div class="group-header">
+                            <div>
+                                <div class="group-name">${group.name}</div>
+                                <div class="group-subject">📚 ${group.subject} • ${group.exam || 'General'}</div>
+                            </div>
+                            <span class="badge ${status}">${isFull ? '🔴 Full' : '🟢 Active'}</span>
+                        </div>
+                        <div class="group-desc">${group.description || 'Study group for focused learning.'}</div>
+                        <div class="group-members">👥 ${memberCount}/${maxMembers} members</div>
+                        <div class="group-tags">
+                            <span>📝 ${group.subject}</span>
+                            <span>📚 ${group.exam || 'General'}</span>
+                            ${group.school ? `<span>🏫 ${group.school}</span>` : ''}
+                        </div>
+                        <div class="group-actions">
+                            ${isJoined ? `
+                                <button class="btn-joined">✅ Joined</button>
+                                <button class="btn-chat" onclick="openChat('${group.id}')">💬 Chat</button>
+                            ` : `
+                                ${!isFull ? `<button class="btn-join" onclick="joinGroup('${group.id}')">➕ Join Group</button>` : ''}
+                            `}
+                            <button class="btn-chat" onclick="viewGroup('${group.id}')">👁️ View</button>
+                        </div>
+                    </div>
+                `;
+            }
+            container.innerHTML = html;
+        }
+
+        async function joinGroup(groupId) {
+            try {
+                const user = auth.currentUser;
+                if (!user) return;
+
+                const groupRef = db.collection('studyGroups').doc(groupId);
+                const doc = await groupRef.get();
+
+                if (!doc.exists) { showToast('Group not found', 'error'); return; }
+
+                const data = doc.data();
+                const memberCount = data.members || 0;
+                const maxMembers = data.maxMembers || 10;
+
+                if (memberCount >= maxMembers) {
+                    showToast('❌ Group is full!', 'error');
+                    return;
+                }
+
+                await groupRef.update({
+                    members: memberCount + 1
+                });
+
+                await db.collection('groupMembers').add({
+                    userId: user.uid,
+                    groupId: groupId,
+                    joinedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                userGroups.add(groupId);
+                showToast('✅ Joined study group!', 'success');
+                await loadGroups();
+
+            } catch (error) {
+                showToast('Error: ' + error.message, 'error');
+            }
+        }
+
+        function openChat(groupId) {
+            showToast('💬 Chat feature coming soon!', 'warning');
+        }
+
+        function viewGroup(groupId) {
+            showToast('👁️ Group details coming soon!', 'warning');
+        }
+
+        function openCreateGroup() {
+            document.getElementById('createGroupModal').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeCreateGroup() {
+            document.getElementById('createGroupModal').classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        document.getElementById('createGroupForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const user = auth.currentUser;
+            if (!user) { showToast('Please login first', 'error'); return; }
+
+            const name = document.getElementById('groupName').value.trim();
+            const subject = document.getElementById('groupSubject').value;
+            const exam = document.getElementById('groupExam').value;
+            const description = document.getElementById('groupDesc').value.trim();
+            const maxMembers = parseInt(document.getElementById('groupMax').value) || 10;
+
+            if (!name || !subject || !exam) {
+                showToast('Please fill in all required fields', 'error');
+                return;
+            }
+
+            const btn = this.querySelector('.btn-primary');
+            btn.disabled = true;
+            btn.textContent = 'Creating...';
+
+            try {
+                await db.collection('studyGroups').add({
+                    name: name,
+                    subject: subject,
+                    exam: exam,
+                    description: description || '',
+                    maxMembers: maxMembers,
+                    members: 1,
+                    creatorId: user.uid,
+                    creatorName: user.displayName || 'Anonymous',
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                // Auto-join the creator
+                const newGroupSnapshot = await db.collection('studyGroups')
+                    .where('creatorId', '==', user.uid)
+                    .orderBy('createdAt', 'desc')
+                    .limit(1)
+                    .get();
+
+                let groupId = '';
+                newGroupSnapshot.forEach(doc => { groupId = doc.id; });
+
+                if (groupId) {
+                    await db.collection('groupMembers').add({
+                        userId: user.uid,
+                        groupId: groupId,
+                        joinedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    userGroups.add(groupId);
+                }
+
+                showToast('✅ Study group created!', 'success');
+                closeCreateGroup();
+                this.reset();
+                await loadGroups();
+
+            } catch (error) {
+                showToast('Error: ' + error.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Create Group';
+            }
+        });
+
+        // Close modal on overlay click
+        document.getElementById('createGroupModal').addEventListener('click', function(e) {
+            if (e.target === this) closeCreateGroup();
+        });
+
+        auth.onAuthStateChanged(user => {
+            if (!user) { window.location.href = 'index.html'; }
+            else { loadGroups(); }
+        });
+
+        console.log('👥 Study Groups loaded!');
+    </script>
+
+</body>
+</html>

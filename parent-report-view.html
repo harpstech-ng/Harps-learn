@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Full Report - HarpsLearn</title>
+
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f0f2f5;
+            min-height: 100vh;
+        }
+
+        .navbar {
+            background: white;
+            padding: 0.6rem 1.2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        .navbar .logo {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #1a1a2e;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            cursor: pointer;
+        }
+        .navbar .logo span { color: #667eea; }
+        .navbar .back-btn {
+            background: none;
+            border: none;
+            font-size: 1.2rem;
+            cursor: pointer;
+            color: #666;
+            padding: 4px 10px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        .navbar .back-btn:hover { background: #f0f2f5; }
+
+        .container { max-width: 700px; margin: 0 auto; padding: 0.8rem; }
+
+        .page-header { margin-bottom: 1rem; }
+        .page-header h1 { font-size: 1.5rem; color: #1a1a2e; }
+        .page-header p { color: #666; font-size: 0.9rem; margin-top: 0.2rem; }
+
+        .report-section {
+            background: white;
+            border-radius: 14px;
+            padding: 1.2rem;
+            margin-bottom: 0.8rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+        .report-section .section-title {
+            font-weight: 700;
+            color: #1a1a2e;
+            font-size: 1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 0.6rem;
+            margin: 0.5rem 0;
+        }
+        .stat-box {
+            background: #f8f9fa;
+            padding: 0.8rem;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .stat-box .value { font-size: 1.3rem; font-weight: 700; color: #667eea; }
+        .stat-box .label { font-size: 0.7rem; color: #666; margin-top: 0.2rem; }
+
+        .progress-item {
+            margin: 0.5rem 0;
+        }
+        .progress-item .subject-name {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+            color: #333;
+            margin-bottom: 0.2rem;
+        }
+        .progress-item .bar {
+            width: 100%;
+            height: 8px;
+            background: #e5e7eb;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .progress-item .bar .fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+
+        .strength-item {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin: 0.2rem;
+        }
+        .strength-item.strong { background: #dcfce7; color: #166534; }
+        .strength-item.weak { background: #fee2e2; color: #991b1b; }
+        .strength-item.medium { background: #fef3c7; color: #92400e; }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 0.6rem 1.2rem;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+            width: 100%;
+        }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(102,126,234,0.4); }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: white;
+            padding: 0.8rem 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            z-index: 5000;
+            animation: toastSlide 0.4s ease;
+            max-width: 90%;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+        .toast.success { background: #22c55e; }
+        .toast.error { background: #ef4444; }
+        .toast.warning { background: #f59e0b; }
+        @keyframes toastSlide { from { transform: translateX(-50%) translateY(100px); opacity: 0; } to { transform: translateX(-50%) translateY(0); opacity: 1; } }
+
+        .text-muted { color: #666; font-size: 0.85rem; }
+        .flex-between { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; }
+        .mt-1 { margin-top: 0.5rem; }
+
+        @media (max-width: 600px) {
+            .navbar { padding: 0.4rem 0.8rem; }
+            .navbar .logo { font-size: 1.1rem; }
+            .container { padding: 0.4rem; }
+            .stat-row { grid-template-columns: 1fr 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="navbar">
+        <div class="logo" onclick="window.location.href='parent-dashboard.html'">👪 Harps<span>Learn</span></div>
+        <button class="back-btn" onclick="window.location.href='parent-dashboard.html'">✕</button>
+    </div>
+
+    <div class="container">
+        <div class="page-header">
+            <h1>📊 Full Report</h1>
+            <p id="childNameHeader">Loading child data...</p>
+        </div>
+
+        <div id="reportContent">
+            <div style="text-align:center;padding:2rem;color:#999;">
+                <span style="font-size:2rem;display:block;margin-bottom:0.5rem;">📊</span>
+                Loading report...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDy-j3_iZwv7IE7HYHircFeEWGdoGizf5M",
+            authDomain: "harpslearn.firebaseapp.com",
+            projectId: "harpslearn",
+            storageBucket: "harpslearn.firebasestorage.app",
+            messagingSenderId: "625210543198",
+            appId: "1:625210543198:web:6faebd2af1465facf338cf",
+            measurementId: "G-8Z8HVC5V5J"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        function showToast(message, type = 'info') {
+            const existing = document.querySelector('.toast');
+            if (existing) existing.remove();
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => { toast.remove(); }, 4000);
+        }
+
+        async function loadReport() {
+            try {
+                const user = auth.currentUser;
+                if (!user) { window.location.href = 'index.html'; return; }
+
+                // Get childId from URL
+                const params = new URLSearchParams(window.location.search);
+                const childId = params.get('child');
+
+                if (!childId) {
+                    showToast('No child selected', 'error');
+                    document.getElementById('reportContent').innerHTML = `
+                        <div class="text-muted" style="padding:2rem;text-align:center;">No child selected. Go back and select a child.</div>
+                    `;
+                    return;
+                }
+
+                // Get child data
+                const childDoc = await db.collection('students').doc(childId).get();
+                const childData = childDoc.data();
+
+                if (!childData) {
+                    showToast('Child not found', 'error');
+                    return;
+                }
+
+                // Get user data for child
+                const userDoc = await db.collection('users').doc(childData.userId).get();
+                const childUserData = userDoc.exists ? userDoc.data() : {};
+
+                const name = childUserData.fullName || 'Child';
+                document.getElementById('childNameHeader').textContent = `📊 Full Report for ${name}`;
+
+                // Get progress data
+                const progressSnapshot = await db.collection('progress')
+                    .where('studentId', '==', childData.userId)
+                    .get();
+
+                let progressData = {};
+                progressSnapshot.forEach(doc => {
+                    progressData = { ...doc.data() };
+                });
+
+                // Get courses
+                const courseSnapshot = await db.collection('courses')
+                    .where('studentId', '==', childData.userId)
+                    .get();
+
+                const courses = [];
+                courseSnapshot.forEach(doc => {
+                    courses.push({ id: doc.id, ...doc.data() });
+                });
+
+                // Calculate stats
+                const totalCourses = courses.length || 0;
+                const totalLessons = courses.reduce((sum, c) => sum + (c.lessons || 0), 0);
+                const avgProgress = courses.length > 0 ? Math.round(courses.reduce((sum, c) => sum + (c.progress || 0), 0) / courses.length) : 0;
+                const avgScore = progressData.averageScore || 0;
+                const hoursSpent = progressData.hoursSpent || 0;
+                const streak = progressData.streak || 0;
+
+                // Build report HTML
+                let coursesHtml = '';
+                for (const course of courses) {
+                    const progress = course.progress || 0;
+                    coursesHtml += `
+                        <div class="progress-item">
+                            <div class="subject-name">
+                                <span>${course.icon || '📚'} ${course.name}</span>
+                                <span>${progress}%</span>
+                            </div>
+                            <div class="bar"><div class="fill" style="width:${progress}%"></div></div>
+                        </div>
+                    `;
+                }
+
+                // Generate strengths and weaknesses (simulated based on progress)
+                const strongSubjects = courses.filter(c => (c.progress || 0) >= 70).map(c => c.name);
+                const weakSubjects = courses.filter(c => (c.progress || 0) < 50).map(c => c.name);
+                const mediumSubjects = courses.filter(c => (c.progress || 0) >= 50 && (c.progress || 0) < 70).map(c => c.name);
+
+                const strengthsHtml = strongSubjects.map(s => `<span class="strength-item strong">✅ ${s}</span>`).join('');
+                const weaknessesHtml = weakSubjects.map(s => `<span class="strength-item weak">❌ ${s}</span>`).join('');
+                const mediumsHtml = mediumSubjects.map(s => `<span class="strength-item medium">📊 ${s}</span>`).join('');
+
+                document.getElementById('reportContent').innerHTML = `
+                    <div class="report-section">
+                        <div class="section-title">📈 Performance Overview</div>
+                        <div class="stat-row">
+                            <div class="stat-box">
+                                <div class="value">${totalCourses}</div>
+                                <div class="label">📚 Courses</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="value">${totalLessons}</div>
+                                <div class="label">📝 Lessons</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="value">${hoursSpent}h</div>
+                                <div class="label">⏱️ Hours Spent</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="value">${avgProgress}%</div>
+                                <div class="label">📊 Avg Progress</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="value">${avgScore}%</div>
+                                <div class="label">🎯 Avg Score</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="value">${streak}🔥</div>
+                                <div class="label">Day Streak</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="report-section">
+                        <div class="section-title">📚 Course Progress</div>
+                        ${coursesHtml || '<p class="text-muted">No courses enrolled yet</p>'}
+                    </div>
+
+                    <div class="report-section">
+                        <div class="section-title">💪 Strengths & Weaknesses</div>
+                        <div style="margin:0.5rem 0;">
+                            <strong>Strengths:</strong>
+                            ${strengthsHtml || '<span class="text-muted">None identified yet</span>'}
+                        </div>
+                        <div style="margin:0.5rem 0;">
+                            <strong>Weaknesses:</strong>
+                            ${weaknessesHtml || '<span class="text-muted">None identified yet</span>'}
+                        </div>
+                        <div style="margin:0.5rem 0;">
+                            <strong>Areas to Improve:</strong>
+                            ${mediumsHtml || '<span class="text-muted">Keep going!</span>'}
+                        </div>
+                    </div>
+
+                    <div class="report-section">
+                        <div class="section-title">📋 Recommendations</div>
+                        <ul style="padding-left:1.2rem;color:#555;line-height:1.8;">
+                            ${weakSubjects.length > 0 ? weakSubjects.map(s => `<li>Focus more on <strong>${s}</strong> - practice daily for 20 minutes</li>`).join('') : '<li>Great job! Keep up the excellent work! 🎉</li>'}
+                            ${mediumSubjects.length > 0 ? mediumSubjects.map(s => `<li>Review <strong>${s}</strong> weekly to strengthen your understanding</li>`).join('') : ''}
+                            <li>Maintain your ${streak} day streak! Consistency is key 💪</li>
+                            <li>${avgScore < 60 ? 'Consider getting a tutor for extra support' : 'You\'re doing well! Consider challenging yourself with advanced topics'}</li>
+                        </ul>
+                    </div>
+
+                    <button class="btn-primary mt-1" onclick="window.location.href='parent-tutors.html'">
+                        👨‍🏫 Get a Tutor for ${name}
+                    </button>
+                    <button class="btn-primary mt-1" style="background:#22c55e;" onclick="showToast('📄 Report downloaded!', 'success')">
+                        📄 Download Report (PDF)
+                    </button>
+                `;
+
+            } catch (error) {
+                console.error('Error loading report:', error);
+                showToast('Error loading report', 'error');
+            }
+        }
+
+        auth.onAuthStateChanged(user => {
+            if (!user) { window.location.href = 'index.html'; }
+            else { loadReport(); }
+        });
+
+        console.log('📊 Parent Report View loaded!');
+    </script>
+
+</body>
+</html>

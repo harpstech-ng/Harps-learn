@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>GPS Check-in - HarpsLearn</title>
+
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f0f2f5;
+            min-height: 100vh;
+        }
+
+        .navbar {
+            background: white;
+            padding: 0.6rem 1.2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        .navbar .logo {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #1a1a2e;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            cursor: pointer;
+        }
+        .navbar .logo span { color: #667eea; }
+        .navbar .back-btn {
+            background: none;
+            border: none;
+            font-size: 1.2rem;
+            cursor: pointer;
+            color: #666;
+            padding: 4px 10px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        .navbar .back-btn:hover { background: #f0f2f5; }
+
+        .container { max-width: 480px; margin: 0 auto; padding: 0.8rem; }
+
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            animation: slideUp 0.5s ease;
+        }
+
+        @keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+        h2 { font-size: 1.8rem; color: #1a1a2e; }
+        .subtitle { color: #666; margin-bottom: 1.5rem; font-size: 0.95rem; }
+
+        .btn {
+            display: inline-block;
+            padding: 14px 28px;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            width: 100%;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(102,126,234,0.4); }
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .form-group { margin-bottom: 1rem; }
+        label { display: block; font-weight: 600; margin-bottom: 0.5rem; color: #333; font-size: 0.9rem; }
+        input, select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-family: inherit;
+        }
+        input:focus, select:focus { outline: none; border-color: #667eea; }
+
+        .gps-status {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 12px;
+            margin: 1rem 0;
+            text-align: center;
+        }
+        .gps-status .icon { font-size: 2rem; display: block; margin-bottom: 0.25rem; }
+        .gps-status p { margin: 0.25rem 0; font-size: 0.9rem; color: #666; }
+        .gps-status .location-data {
+            background: white;
+            padding: 0.75rem;
+            border-radius: 8px;
+            margin-top: 0.5rem;
+            font-family: monospace;
+            font-size: 0.85rem;
+            color: #1a1a2e;
+        }
+
+        .checkin-result {
+            margin-top: 1rem;
+            padding: 1rem;
+            border-radius: 12px;
+            text-align: center;
+            animation: slideUp 0.3s ease;
+        }
+        .checkin-result.success { background: #dcfce7; color: #166534; border: 2px solid #22c55e; }
+        .checkin-result.error { background: #fee2e2; color: #991b1b; border: 2px solid #ef4444; }
+        .checkin-result.waiting { background: #fef3c7; color: #92400e; border: 2px solid #f59e0b; }
+        .checkin-result h3 { margin-bottom: 0.25rem; }
+
+        .history-item {
+            background: #f8f9fa;
+            padding: 0.75rem;
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+        .history-item .time { float: right; font-size: 0.8rem; color: #999; }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: white;
+            padding: 0.8rem 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            z-index: 5000;
+            animation: toastSlide 0.4s ease;
+            max-width: 90%;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+        .toast.success { background: #22c55e; }
+        .toast.error { background: #ef4444; }
+        .toast.warning { background: #f59e0b; }
+        @keyframes toastSlide { from { transform: translateX(-50%) translateY(100px); opacity: 0; } to { transform: translateX(-50%) translateY(0); opacity: 1; } }
+
+        .text-muted { color: #666; font-size: 0.85rem; }
+        .mt-1 { margin-top: 0.5rem; }
+        .mt-2 { margin-top: 1rem; }
+        .hidden { display: none !important; }
+        .flex-between { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; }
+
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 8px;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        @media (max-width: 480px) {
+            .card { padding: 1.5rem; }
+            h2 { font-size: 1.5rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="navbar">
+        <div class="logo" onclick="window.location.href='tutor-dashboard.html'">👨‍🏫 Harps<span>Learn</span></div>
+        <button class="back-btn" onclick="window.location.href='tutor-dashboard.html'">✕</button>
+    </div>
+
+    <div class="container">
+        <div class="card">
+            <div class="header">
+                <div>
+                    <h2>📍 GPS Check-in</h2>
+                </div>
+                <button onclick="logout()" class="btn btn-danger" style="width:auto;padding:8px 16px;font-size:0.8rem;border-radius:8px;">Logout</button>
+            </div>
+
+            <p class="subtitle">Verify your location for the session</p>
+
+            <div class="form-group">
+                <label>Booking ID</label>
+                <input type="text" id="bookingId" placeholder="Enter booking ID" />
+            </div>
+
+            <div class="form-group">
+                <label>Your Role</label>
+                <select id="roleSelect">
+                    <option value="tutor">👨‍🏫 Tutor</option>
+                    <option value="student">📚 Student</option>
+                </select>
+            </div>
+
+            <div class="gps-status" id="gpsStatus">
+                <span class="icon">🔄</span>
+                <p>Detecting your location...</p>
+                <p style="font-size:0.8rem;color:#999;">Please enable GPS on your device</p>
+            </div>
+
+            <button onclick="performCheckin()" class="btn btn-primary" id="checkinBtn">
+                📍 Check In Now
+            </button>
+
+            <div id="checkinResult" class="hidden checkin-result"></div>
+
+            <div id="historySection" class="hidden mt-2">
+                <h4 style="margin-bottom:0.5rem;">📋 Check-in History</h4>
+                <div id="historyList"></div>
+            </div>
+
+            <p class="text-center text-muted mt-2">
+                ⚠️ Both tutor and student must check in within <strong>100 meters</strong>
+            </p>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDy-j3_iZwv7IE7HYHircFeEWGdoGizf5M",
+            authDomain: "harpslearn.firebaseapp.com",
+            projectId: "harpslearn",
+            storageBucket: "harpslearn.firebasestorage.app",
+            messagingSenderId: "625210543198",
+            appId: "1:625210543198:web:6faebd2af1465facf338cf",
+            measurementId: "G-8Z8HVC5V5J"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        function showToast(message, type = 'info') {
+            const existing = document.querySelector('.toast');
+            if (existing) existing.remove();
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => { toast.remove(); }, 4000);
+        }
+
+        function getCurrentUser() {
+            return new Promise((resolve) => {
+                const unsubscribe = auth.onAuthStateChanged(user => {
+                    unsubscribe();
+                    resolve(user);
+                });
+            });
+        }
+
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371;
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c;
+        }
+
+        function getLocation() {
+            return new Promise((resolve, reject) => {
+                if (!navigator.geolocation) {
+                    reject('Geolocation not supported on this device');
+                    return;
+                }
+
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        resolve({
+                            lat: position.coords.latitude,
+                            lng: position.coords.longitude,
+                            accuracy: position.coords.accuracy
+                        });
+                    },
+                    (error) => {
+                        let message = error.message;
+                        if (error.code === 1) message = 'Location permission denied. Please enable GPS.';
+                        else if (error.code === 2) message = 'Location unavailable. Try again.';
+                        else if (error.code === 3) message = 'Location request timed out.';
+                        reject(message);
+                    },
+                    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+                );
+            });
+        }
+
+        async function performCheckin() {
+            const bookingId = document.getElementById('bookingId').value.trim();
+            const role = document.getElementById('roleSelect').value;
+
+            if (!bookingId) {
+                showToast('Please enter a booking ID', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('checkinBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span> Checking in...';
+
+            const statusDiv = document.getElementById('gpsStatus');
+
+            try {
+                const user = await getCurrentUser();
+                if (!user) {
+                    showToast('Please login first', 'error');
+                    window.location.href = 'index.html';
+                    return;
+                }
+
+                statusDiv.innerHTML = `
+                    <span class="icon">📍</span>
+                    <p>Getting your location...</p>
+                    <div class="location-data">⏳ Please wait...</div>
+                `;
+
+                const location = await getLocation();
+
+                statusDiv.innerHTML = `
+                    <span class="icon">✅</span>
+                    <p><strong>Location detected!</strong></p>
+                    <div class="location-data">
+                        📍 Lat: ${location.lat.toFixed(6)}<br>
+                        📍 Lng: ${location.lng.toFixed(6)}<br>
+                        🎯 Accuracy: ${location.accuracy.toFixed(0)}m
+                    </div>
+                `;
+
+                // Save check-in
+                await db.collection('gpsCheckins').add({
+                    bookingId: bookingId,
+                    userId: user.uid,
+                    role: role,
+                    latitude: location.lat,
+                    longitude: location.lng,
+                    accuracyMeters: location.accuracy,
+                    checkinTime: firebase.firestore.FieldValue.serverTimestamp(),
+                    isVerified: false
+                });
+
+                showToast('✅ Check-in recorded!', 'success');
+
+                const resultDiv = document.getElementById('checkinResult');
+                resultDiv.className = 'checkin-result waiting';
+                resultDiv.innerHTML = `
+                    <h3>⏳ Checked In!</h3>
+                    <p>Waiting for the ${role === 'tutor' ? 'student' : 'tutor'} to check in...</p>
+                    <p style="font-size:0.8rem;margin-top:0.5rem;">Both parties must be within 100m</p>
+                `;
+                resultDiv.classList.remove('hidden');
+
+                await checkBothParties(bookingId);
+                await loadCheckinHistory(bookingId);
+
+            } catch (error) {
+                showToast('❌ ' + error.message, 'error');
+                statusDiv.innerHTML = `
+                    <span class="icon">❌</span>
+                    <p style="color:#ef4444;"><strong>${error.message}</strong></p>
+                    <p style="font-size:0.8rem;color:#999;">Please enable GPS and try again</p>
+                `;
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '📍 Check In Now';
+            }
+        }
+
+        async function checkBothParties(bookingId) {
+            try {
+                const snapshot = await db.collection('gpsCheckins')
+                    .where('bookingId', '==', bookingId)
+                    .get();
+
+                if (snapshot.size === 2) {
+                    const checkins = [];
+                    snapshot.forEach(doc => checkins.push({ id: doc.id, ...doc.data() }));
+
+                    const tutor = checkins.find(c => c.role === 'tutor');
+                    const student = checkins.find(c => c.role === 'student');
+
+                    if (tutor && student) {
+                        const distance = calculateDistance(
+                            tutor.latitude, tutor.longitude,
+                            student.latitude, student.longitude
+                        );
+
+                        const distanceMeters = distance * 1000;
+                        const resultDiv = document.getElementById('checkinResult');
+
+                        if (distanceMeters <= 100) {
+                            resultDiv.className = 'checkin-result success';
+                            resultDiv.innerHTML = `
+                                <h3>🎉 Both Verified!</h3>
+                                <p>✅ Tutor and student are within ${distanceMeters.toFixed(0)}m</p>
+                                <p style="font-size:1.2rem;font-weight:bold;margin-top:0.5rem;">Session can begin! 🚀</p>
+                            `;
+
+                            await db.collection('bookings').doc(bookingId).set({
+                                status: 'in-progress',
+                                gpsVerified: true,
+                                verificationTime: firebase.firestore.FieldValue.serverTimestamp()
+                            }, { merge: true });
+
+                            showToast('🎉 Both parties verified! Session can begin!', 'success');
+                        } else {
+                            resultDiv.className = 'checkin-result error';
+                            resultDiv.innerHTML = `
+                                <h3>⚠️ Distance Too Far</h3>
+                                <p>Distance: <strong>${distanceMeters.toFixed(0)}m</strong> (max 100m allowed)</p>
+                                <p>Please move closer and check in again</p>
+                                <p style="font-size:0.8rem;margin-top:0.5rem;">Tutor: ${tutor.latitude.toFixed(4)}, ${tutor.longitude.toFixed(4)}<br>
+                                Student: ${student.latitude.toFixed(4)}, ${student.longitude.toFixed(4)}</p>
+                            `;
+                            showToast(`⚠️ Too far apart (${distanceMeters.toFixed(0)}m)`, 'warning');
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Error checking parties:', error);
+            }
+        }
+
+        async function loadCheckinHistory(bookingId) {
+            try {
+                const snapshot = await db.collection('gpsCheckins')
+                    .where('bookingId', '==', bookingId)
+                    .orderBy('checkinTime', 'desc')
+                    .get();
+
+                const section = document.getElementById('historySection');
+                const list = document.getElementById('historyList');
+
+                if (snapshot.empty) {
+                    section.classList.add('hidden');
+                    return;
+                }
+
+                let html = '';
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    const date = data.checkinTime?.toDate?.() || new Date();
+                    const status = data.isVerified ? '✅ Verified' : '⏳ Pending';
+                    html += `
+                        <div class="history-item">
+                            <strong>${data.role.toUpperCase()}</strong>
+                            <span class="time">${date.toLocaleTimeString()}</span>
+                            <br>
+                            <span style="font-size:0.8rem;color:#666;">
+                                📍 ${data.latitude.toFixed(4)}, ${data.longitude.toFixed(4)}
+                                <span style="margin-left:8px;font-weight:600;">${status}</span>
+                            </span>
+                        </div>
+                    `;
+                });
+
+                list.innerHTML = html;
+                section.classList.remove('hidden');
+
+            } catch (error) {
+                console.error('Error loading history:', error);
+            }
+        }
+
+        async function logout() {
+            try {
+                await auth.signOut();
+                showToast('👋 Logged out', 'success');
+                window.location.href = 'index.html';
+            } catch (error) {
+                showToast('❌ ' + error.message, 'error');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            auth.onAuthStateChanged(user => {
+                if (!user) {
+                    showToast('Please login first', 'warning');
+                    setTimeout(() => { window.location.href = 'index.html'; }, 1500);
+                }
+            });
+
+            getLocation().then(location => {
+                document.getElementById('gpsStatus').innerHTML = `
+                    <span class="icon">✅</span>
+                    <p><strong>GPS ready!</strong></p>
+                    <div class="location-data">
+                        📍 ${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}<br>
+                        🎯 Accuracy: ${location.accuracy.toFixed(0)}m
+                    </div>
+                `;
+            }).catch(() => {
+                document.getElementById('gpsStatus').innerHTML = `
+                    <span class="icon">⚠️</span>
+                    <p style="color:#f59e0b;">Enable GPS and refresh</p>
+                    <p style="font-size:0.8rem;color:#999;">Please allow location access</p>
+                `;
+            });
+        });
+
+        console.log('📍 GPS Check-in page loaded!');
+    </script>
+
+</body>
+</html>

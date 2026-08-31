@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Help & Support - HarpsLearn</title>
+
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f0f2f5;
+            min-height: 100vh;
+        }
+
+        .navbar {
+            background: white;
+            padding: 0.6rem 1.2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        .navbar .logo {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #1a1a2e;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            cursor: pointer;
+        }
+        .navbar .logo span { color: #667eea; }
+        .navbar .back-btn {
+            background: none;
+            border: none;
+            font-size: 1.2rem;
+            cursor: pointer;
+            color: #666;
+            padding: 4px 10px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        .navbar .back-btn:hover { background: #f0f2f5; }
+
+        .container { max-width: 700px; margin: 0 auto; padding: 0.8rem; }
+
+        .page-header { margin-bottom: 1rem; }
+        .page-header h1 { font-size: 1.5rem; color: #1a1a2e; }
+        .page-header p { color: #666; font-size: 0.9rem; margin-top: 0.2rem; }
+
+        .faq-item {
+            background: white;
+            border-radius: 14px;
+            padding: 1rem;
+            margin-bottom: 0.6rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .faq-item:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.1); }
+        .faq-item .question {
+            font-weight: 600;
+            color: #1a1a2e;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .faq-item .question .arrow { transition: transform 0.3s ease; }
+        .faq-item .question .arrow.open { transform: rotate(180deg); }
+        .faq-item .answer {
+            display: none;
+            padding-top: 0.5rem;
+            color: #666;
+            line-height: 1.6;
+            font-size: 0.9rem;
+        }
+        .faq-item .answer.open { display: block; }
+
+        .contact-card {
+            background: white;
+            border-radius: 14px;
+            padding: 1.5rem;
+            margin-top: 1rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            text-align: center;
+        }
+        .contact-card h3 { color: #1a1a2e; margin-bottom: 0.5rem; }
+        .contact-card p { color: #666; font-size: 0.9rem; }
+        .contact-card .contact-email {
+            color: #667eea;
+            font-weight: 600;
+            font-size: 1.1rem;
+            margin: 0.5rem 0;
+        }
+        .contact-card .btn {
+            padding: 10px 30px;
+            border: none;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .contact-card .btn:hover { transform: scale(1.05); }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: white;
+            padding: 0.8rem 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            z-index: 5000;
+            animation: toastSlide 0.4s ease;
+            max-width: 90%;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+        .toast.success { background: #22c55e; }
+        .toast.error { background: #ef4444; }
+        .toast.warning { background: #f59e0b; }
+        @keyframes toastSlide { from { transform: translateX(-50%) translateY(100px); opacity: 0; } to { transform: translateX(-50%) translateY(0); opacity: 1; } }
+
+        .text-muted { color: #666; font-size: 0.85rem; }
+
+        @media (max-width: 600px) {
+            .navbar { padding: 0.4rem 0.8rem; }
+            .navbar .logo { font-size: 1.1rem; }
+            .container { padding: 0.4rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="navbar">
+        <div class="logo" onclick="window.location.href='student-dashboard.html'">🎓 Harps<span>Learn</span></div>
+        <button class="back-btn" onclick="window.location.href='student-dashboard.html'">✕</button>
+    </div>
+
+    <div class="container">
+        <div class="page-header">
+            <h1>❓ Help & Support</h1>
+            <p>Find answers to common questions and get support.</p>
+        </div>
+
+        <div id="faqList">
+            <!-- FAQs will be loaded here -->
+        </div>
+
+        <div class="contact-card">
+            <h3>📧 Still Need Help?</h3>
+            <p>Our support team is here to help you</p>
+            <div class="contact-email">📩 support@harpslearn.com</div>
+            <button class="btn" onclick="contactSupport()">📩 Contact Support</button>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDy-j3_iZwv7IE7HYHircFeEWGdoGizf5M",
+            authDomain: "harpslearn.firebaseapp.com",
+            projectId: "harpslearn",
+            storageBucket: "harpslearn.firebasestorage.app",
+            messagingSenderId: "625210543198",
+            appId: "1:625210543198:web:6faebd2af1465facf338cf",
+            measurementId: "G-8Z8HVC5V5J"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        const faqs = [
+            {
+                q: "What is HarpsLearn?",
+                a: "HarpsLearn is the Operating System for African Exam Success. We help students prepare for WAEC, NECO, BECE, KCSE, and JAMB through interactive courses, tutoring, and personalized learning."
+            },
+            {
+                q: "How do I join a course?",
+                a: "Go to the Holiday Bootcamp section, browse available courses, and click on the course you want to join. Some courses are free, while others require a subscription."
+            },
+            {
+                q: "What is the Parent Access Key?",
+                a: "The Parent Access Key is a 16-character code generated by students. Parents can use this key to link their account and track their child's progress."
+            },
+            {
+                q: "How does the GPS Check-in work?",
+                a: "For home lessons, tutors must click 'Start Class' and the app confirms they are at the student's location. This proof is sent to parents to ensure tutors actually showed up."
+            },
+            {
+                q: "Can I download lessons for offline learning?",
+                a: "Yes! Courses with the 'Downloadable' badge can be downloaded for offline learning. This helps you learn without using data."
+            },
+            {
+                q: "How much does HarpsLearn cost?",
+                a: "HarpsLearn offers a Free plan with basic features. Premium plans start at ₦2,000/month with full access to all courses and features."
+            },
+            {
+                q: "How do I become a tutor?",
+                a: "Sign up as a tutor, complete your profile with qualifications and documents, and wait for verification. Once verified, you can start teaching and earning."
+            },
+            {
+                q: "What is the Punctuality Guarantee?",
+                a: "Teachers must start class on time with GPS proof. If a teacher misses or no-shows, an automatic fine is paid back to the parent's wallet."
+            }
+        ];
+
+        function renderFAQs() {
+            const container = document.getElementById('faqList');
+            let html = '';
+            for (const faq of faqs) {
+                html += `
+                    <div class="faq-item" onclick="toggleFAQ(this)">
+                        <div class="question">
+                            <span>${faq.q}</span>
+                            <span class="arrow">▼</span>
+                        </div>
+                        <div class="answer">${faq.a}</div>
+                    </div>
+                `;
+            }
+            container.innerHTML = html;
+        }
+
+        function toggleFAQ(element) {
+            const answer = element.querySelector('.answer');
+            const arrow = element.querySelector('.arrow');
+            answer.classList.toggle('open');
+            arrow.classList.toggle('open');
+        }
+
+        function contactSupport() {
+            const email = 'support@harpslearn.com';
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(email).then(() => {
+                    showToast('📧 Email copied to clipboard!', 'success');
+                }).catch(() => {
+                    window.location.href = 'mailto:' + email;
+                });
+            } else {
+                window.location.href = 'mailto:' + email;
+            }
+        }
+
+        function showToast(message, type = 'info') {
+            const existing = document.querySelector('.toast');
+            if (existing) existing.remove();
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => { toast.remove(); }, 4000);
+        }
+
+        auth.onAuthStateChanged(user => {
+            if (!user) { window.location.href = 'index.html'; }
+            else { renderFAQs(); }
+        });
+
+        console.log('❓ Help & Support loaded!');
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Parent Settings - HarpsLearn</title>
+
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://upload-widget.cloudinary.com/global/all.js"></script>
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f0f2f5;
+            min-height: 100vh;
+        }
+
+        .navbar {
+            background: white;
+            padding: 0.6rem 1.2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        .navbar .logo {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #1a1a2e;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            cursor: pointer;
+        }
+        .navbar .logo span { color: #667eea; }
+        .navbar .back-btn {
+            background: none;
+            border: none;
+            font-size: 1.2rem;
+            cursor: pointer;
+            color: #666;
+            padding: 4px 10px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        .navbar .back-btn:hover { background: #f0f2f5; }
+
+        .container { max-width: 700px; margin: 0 auto; padding: 0.8rem; }
+        .page-header { margin-bottom: 1rem; }
+        .page-header h1 { font-size: 1.5rem; color: #1a1a2e; }
+        .page-header p { color: #666; font-size: 0.9rem; margin-top: 0.2rem; }
+
+        .settings-section {
+            background: white;
+            border-radius: 14px;
+            padding: 1.2rem;
+            margin-bottom: 0.8rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+        .settings-section .section-title {
+            font-weight: 700;
+            color: #1a1a2e;
+            font-size: 1rem;
+            margin-bottom: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .profile-section {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.5rem 0;
+        }
+        .profile-section .avatar {
+            width: 70px; height: 70px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 2rem;
+            font-weight: 700;
+            object-fit: cover;
+            overflow: hidden;
+            border: 3px solid white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .profile-section .avatar:hover { transform: scale(1.05); }
+        .profile-section .avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .profile-section .profile-info { flex: 1; }
+        .profile-section .profile-info .name { font-weight: 700; color: #1a1a2e; font-size: 1.1rem; }
+        .profile-section .profile-info .email { color: #666; font-size: 0.85rem; }
+        .profile-section .profile-info .role { display: inline-block; background: #667eea; color: white; padding: 2px 12px; border-radius: 12px; font-size: 0.7rem; font-weight: 600; margin-top: 2px; }
+        .profile-section .change-photo-btn {
+            background: none;
+            border: 2px solid #667eea;
+            color: #667eea;
+            padding: 4px 12px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .profile-section .change-photo-btn:hover { background: #667eea; color: white; }
+
+        .settings-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.6rem 0;
+            border-bottom: 1px solid #f3f4f6;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .settings-item:last-child { border-bottom: none; }
+        .settings-item:hover { background: #f8f9fa; padding-left: 0.5rem; padding-right: 0.5rem; border-radius: 8px; }
+        .settings-item .item-label { font-size: 0.9rem; color: #333; }
+        .settings-item .item-label small { display: block; font-size: 0.75rem; color: #999; font-weight: 400; }
+        .settings-item .item-value { font-size: 0.85rem; color: #666; display: flex; align-items: center; gap: 0.5rem; }
+        .settings-item .item-value .arrow { color: #ccc; }
+        .settings-item .toggle {
+            width: 48px;
+            height: 26px;
+            appearance: none;
+            background: #e5e7eb;
+            border-radius: 13px;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            flex-shrink: 0;
+        }
+        .settings-item .toggle:checked { background: #667eea; }
+        .settings-item .toggle::before {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            top: 3px;
+            left: 3px;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .settings-item .toggle:checked::before { left: 25px; }
+
+        .input-group { margin-bottom: 1rem; }
+        .input-group label { display: block; font-weight: 600; margin-bottom: 0.3rem; color: #333; font-size: 0.9rem; }
+        .input-group input, .input-group select, .input-group textarea {
+            width: 100%;
+            padding: 10px 14px;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            font-family: inherit;
+        }
+        .input-group input:focus, .input-group select:focus, .input-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .input-group textarea { min-height: 80px; resize: vertical; }
+
+        .secret-key-box {
+            background: #f8f9fa;
+            padding: 0.8rem;
+            border-radius: 10px;
+            text-align: center;
+            margin: 0.5rem 0;
+            border: 2px dashed #e5e7eb;
+        }
+        .secret-key-box code {
+            font-size: 1.1rem;
+            letter-spacing: 2px;
+            font-weight: bold;
+            color: #764ba2;
+            word-break: break-all;
+        }
+        .secret-key-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .secret-key-actions button {
+            padding: 4px 16px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .secret-key-actions .btn-copy { background: #667eea; color: white; }
+        .secret-key-actions .btn-copy:hover { transform: scale(1.05); }
+        .secret-key-actions .btn-generate { background: #f0f2f5; color: #666; }
+        .secret-key-actions .btn-generate:hover { background: #e5e7eb; }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 0.6rem 1.2rem;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+            width: 100%;
+        }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(102,126,234,0.4); }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: white;
+            padding: 0.8rem 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            z-index: 5000;
+            animation: toastSlide 0.4s ease;
+            max-width: 90%;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+        .toast.success { background: #22c55e; }
+        .toast.error { background: #ef4444; }
+        .toast.warning { background: #f59e0b; }
+        @keyframes toastSlide { from { transform: translateX(-50%) translateY(100px); opacity: 0; } to { transform: translateX(-50%) translateY(0); opacity: 1; } }
+
+        .text-muted { color: #666; font-size: 0.85rem; }
+        .mt-1 { margin-top: 0.5rem; }
+
+        @media (max-width: 600px) {
+            .navbar { padding: 0.4rem 0.8rem; }
+            .navbar .logo { font-size: 1.1rem; }
+            .container { padding: 0.4rem; }
+            .settings-section { padding: 1rem; }
+            .profile-section { flex-wrap: wrap; }
+            .profile-section .avatar { width: 60px; height: 60px; font-size: 1.5rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="navbar">
+        <div class="logo" onclick="window.location.href='parent-dashboard.html'">👪 Harps<span>Learn</span></div>
+        <button class="back-btn" onclick="window.location.href='parent-dashboard.html'">✕</button>
+    </div>
+
+    <div class="container">
+        <div class="page-header">
+            <h1>⚙️ Parent Settings</h1>
+            <p>Manage your profile, preferences, and account settings.</p>
+        </div>
+
+        <!-- Profile Section -->
+        <div class="settings-section">
+            <div class="profile-section">
+                <div class="avatar" id="settingsAvatar" onclick="uploadProfilePic()">👤</div>
+                <div class="profile-info">
+                    <div class="name" id="settingsName">Loading...</div>
+                    <div class="email" id="settingsEmail">loading@email.com</div>
+                    <span class="role" id="settingsRole">Parent</span>
+                </div>
+                <button class="change-photo-btn" onclick="uploadProfilePic()">📷 Change</button>
+            </div>
+        </div>
+
+        <!-- Profile Details -->
+        <div class="settings-section">
+            <div class="section-title">📋 Profile Details</div>
+            <div class="input-group">
+                <label>Full Name</label>
+                <input type="text" id="editName" placeholder="Your full name" />
+            </div>
+            <div class="input-group">
+                <label>Phone Number</label>
+                <input type="tel" id="editPhone" placeholder="+2348012345678" />
+            </div>
+            <button class="btn-primary" onclick="updateProfile()">💾 Update Profile</button>
+        </div>
+
+        <!-- Parent Secret Key -->
+        <div class="settings-section">
+            <div class="section-title">🔐 Parent Secret Key</div>
+            <p style="font-size:0.85rem;color:#666;margin-bottom:0.5rem;">Share this key with your child to link their account</p>
+            <div class="secret-key-box">
+                <code id="secretKeyDisplay">Loading...</code>
+            </div>
+            <div class="secret-key-actions">
+                <button class="btn-copy" onclick="copyKey()">📋 Copy Key</button>
+                <button class="btn-generate" onclick="generateNewKey()">🔄 Generate New</button>
+            </div>
+        </div>
+
+        <!-- Preferences -->
+        <div class="settings-section">
+            <div class="section-title">🎨 Preferences</div>
+            <div class="settings-item" onclick="toggleDarkMode()">
+                <div class="item-label">🌙 Dark Mode <small>Switch to dark theme</small></div>
+                <input type="checkbox" class="toggle" id="darkModeToggle" />
+            </div>
+            <div class="settings-item" onclick="toggleNotifications()">
+                <div class="item-label">🔔 Push Notifications <small>Get updates and reminders</small></div>
+                <input type="checkbox" class="toggle" id="notifToggle" checked />
+            </div>
+            <div class="settings-item" onclick="toggleSMS()">
+                <div class="item-label">📱 SMS Reports <small>Get reports via SMS</small></div>
+                <input type="checkbox" class="toggle" id="smsToggle" checked />
+            </div>
+        </div>
+
+        <!-- Account -->
+        <div class="settings-section">
+            <div class="section-title">🔐 Account</div>
+            <div class="settings-item" onclick="changePassword()">
+                <div class="item-label">🔑 Change Password <small>Update your password</small></div>
+                <div class="item-value">→</div>
+            </div>
+            <div class="settings-item" onclick="window.location.href='subscription.html'">
+                <div class="item-label">💎 Subscription <small>Manage your plan</small></div>
+                <div class="item-value" id="subscriptionStatus">Free Plan →</div>
+            </div>
+            <div class="settings-item" onclick="showToast('Coming soon!', 'warning')">
+                <div class="item-label">📥 Download My Data <small>Export your data</small></div>
+                <div class="item-value">→</div>
+            </div>
+            <div class="settings-item" onclick="deleteAccount()" style="border-bottom:none;">
+                <div class="item-label" style="color:#ef4444;">🗑️ Delete Account <small>Permanently delete your account</small></div>
+                <div class="item-value" style="color:#ef4444;">→</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDy-j3_iZwv7IE7HYHircFeEWGdoGizf5M",
+            authDomain: "harpslearn.firebaseapp.com",
+            projectId: "harpslearn",
+            storageBucket: "harpslearn.firebasestorage.app",
+            messagingSenderId: "625210543198",
+            appId: "1:625210543198:web:6faebd2af1465facf338cf",
+            measurementId: "G-8Z8HVC5V5J"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        const CLOUDINARY_CONFIG = {
+            cloudName: 'dwc2sthsd',
+            unsignedPreset: 'harpslearn_unsigned'
+        };
+
+        let currentUser = null;
+        let userData = null;
+        let parentData = null;
+
+        function showToast(message, type = 'info') {
+            const existing = document.querySelector('.toast');
+            if (existing) existing.remove();
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => { toast.remove(); }, 4000);
+        }
+
+        function generateKey() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let key = '';
+            for (let i = 0; i < 16; i++) {
+                key += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return key;
+        }
+
+        function uploadProfilePic() {
+            if (typeof cloudinary === 'undefined') {
+                showToast('Loading uploader...', 'warning');
+                return;
+            }
+
+            const widget = cloudinary.createUploadWidget({
+                cloudName: CLOUDINARY_CONFIG.cloudName,
+                uploadPreset: CLOUDINARY_CONFIG.unsignedPreset,
+                sources: ['local', 'camera'],
+                multiple: false,
+                maxFileSize: 2000000,
+                resourceType: 'image',
+                clientAllowedFormats: ['jpg', 'jpeg', 'png']
+            }, async (error, result) => {
+                if (error) {
+                    showToast('❌ Upload error: ' + error.message, 'error');
+                    return;
+                }
+
+                if (result && result.event === 'success') {
+                    const fileUrl = result.info.secure_url || result.info.url;
+
+                    try {
+                        const user = auth.currentUser;
+                        if (!user) return;
+
+                        await db.collection('users').doc(user.uid).update({
+                            profilePic: fileUrl
+                        });
+
+                        document.getElementById('settingsAvatar').innerHTML = `<img src="${fileUrl}" alt="Profile" />`;
+                        showToast('✅ Profile picture updated!', 'success');
+                    } catch (e) {
+                        showToast('Error saving: ' + e.message, 'error');
+                    }
+                }
+            });
+
+            widget.open();
+        }
+
+        async function loadSettings() {
+            try {
+                const user = auth.currentUser;
+                if (!user) { window.location.href = 'index.html'; return; }
+
+                currentUser = user;
+
+                const userDoc = await db.collection('users').doc(user.uid).get();
+                userData = userDoc.data();
+
+                if (!userData || userData.role !== 'parent') {
+                    showToast('This page is for parents only', 'error');
+                    setTimeout(() => window.location.href = 'index.html', 1500);
+                    return;
+                }
+
+                const name = userData.fullName || 'Parent';
+                document.getElementById('settingsName').textContent = name;
+                document.getElementById('settingsEmail').textContent = userData.email || 'No email';
+                document.getElementById('settingsRole').textContent = 'Parent';
+
+                document.getElementById('editName').value = name;
+                document.getElementById('editPhone').value = userData.phone || '';
+
+                if (userData.profilePic) {
+                    document.getElementById('settingsAvatar').innerHTML = `<img src="${userData.profilePic}" alt="Profile" />`;
+                }
+
+                // Load parent data
+                const parentDoc = await db.collection('parents').doc(user.uid).get();
+                parentData = parentDoc.data();
+
+                if (parentData) {
+                    const key = parentData.secretKey || generateKey();
+                    document.getElementById('secretKeyDisplay').textContent = key;
+                    if (!parentData.secretKey) {
+                        await db.collection('parents').doc(user.uid).update({ secretKey: key });
+                    }
+                }
+
+                // Load subscription
+                const subSnapshot = await db.collection('subscriptions')
+                    .where('userId', '==', user.uid)
+                    .where('status', '==', 'active')
+                    .get();
+
+                let subStatus = 'Free Plan';
+                subSnapshot.forEach(doc => {
+                    const data = doc.data();
+                    subStatus = data.planId === 'premium' ? 'Premium Plan' : 
+                               data.planId === 'yearly' ? 'Yearly Plan' : 
+                               data.planId === 'basic' ? 'Basic Plan' : 'Free Plan';
+                });
+                document.getElementById('subscriptionStatus').textContent = subStatus + ' →';
+
+                // Preferences
+                if (userData.preferences) {
+                    document.getElementById('darkModeToggle').checked = userData.preferences.darkMode || false;
+                    document.getElementById('notifToggle').checked = userData.preferences.notifications !== false;
+                    document.getElementById('smsToggle').checked = userData.preferences.smsReports !== false;
+                }
+
+            } catch (error) {
+                console.error('Error loading settings:', error);
+                showToast('Error loading settings', 'error');
+            }
+        }
+
+        function updateProfile() {
+            const name = document.getElementById('editName').value.trim();
+            const phone = document.getElementById('editPhone').value.trim();
+
+            if (!name) { showToast('Please enter your name', 'error'); return; }
+
+            const user = auth.currentUser;
+            if (user) {
+                db.collection('users').doc(user.uid).update({
+                    fullName: name,
+                    phone: phone
+                }).then(() => {
+                    showToast('✅ Profile updated successfully!', 'success');
+                    document.getElementById('settingsName').textContent = name;
+                }).catch(() => {
+                    showToast('Error updating profile', 'error');
+                });
+            }
+        }
+
+        function copyKey() {
+            const key = document.getElementById('secretKeyDisplay').textContent;
+            navigator.clipboard.writeText(key).then(() => {
+                showToast('📋 Key copied!', 'success');
+            }).catch(() => {
+                const input = document.createElement('input');
+                input.value = key;
+                document.body.appendChild(input);
+                input.select();
+                document.execCommand('copy');
+                document.body.removeChild(input);
+                showToast('📋 Key copied!', 'success');
+            });
+        }
+
+        async function generateNewKey() {
+            try {
+                const user = auth.currentUser;
+                if (!user) return;
+
+                const newKey = generateKey();
+                await db.collection('parents').doc(user.uid).update({
+                    secretKey: newKey
+                });
+
+                document.getElementById('secretKeyDisplay').textContent = newKey;
+                showToast('🔑 New key generated!', 'success');
+            } catch (error) {
+                showToast('Error generating key', 'error');
+            }
+        }
+
+        function toggleDarkMode() {
+            const toggle = document.getElementById('darkModeToggle');
+            toggle.checked = !toggle.checked;
+            if (toggle.checked) {
+                document.body.style.background = '#1a1a2e';
+                document.body.style.color = 'white';
+                document.querySelectorAll('.settings-section').forEach(el => el.style.background = '#2d2d44');
+                document.querySelectorAll('.settings-item').forEach(el => el.style.color = '#eee');
+                showToast('🌙 Dark mode enabled', 'success');
+            } else {
+                document.body.style.background = '#f0f2f5';
+                document.body.style.color = 'inherit';
+                document.querySelectorAll('.settings-section').forEach(el => el.style.background = 'white');
+                document.querySelectorAll('.settings-item').forEach(el => el.style.color = 'inherit');
+                showToast('☀️ Light mode enabled', 'success');
+            }
+            db.collection('users').doc(auth.currentUser.uid).update({
+                'preferences.darkMode': toggle.checked
+            }).catch(() => {});
+        }
+
+        function toggleNotifications() {
+            const toggle = document.getElementById('notifToggle');
+            toggle.checked = !toggle.checked;
+            showToast(toggle.checked ? '🔔 Notifications enabled' : '🔕 Notifications disabled', 'success');
+            db.collection('users').doc(auth.currentUser.uid).update({
+                'preferences.notifications': toggle.checked
+            }).catch(() => {});
+        }
+
+        function toggleSMS() {
+            const toggle = document.getElementById('smsToggle');
+            toggle.checked = !toggle.checked;
+            showToast(toggle.checked ? '📱 SMS reports enabled' : '📱 SMS reports disabled', 'success');
+            db.collection('users').doc(auth.currentUser.uid).update({
+                'preferences.smsReports': toggle.checked
+            }).catch(() => {});
+        }
+
+        function changePassword() {
+            const email = auth.currentUser?.email;
+            if (!email) return;
+            auth.sendPasswordResetEmail(email).then(() => {
+                showToast('📧 Password reset link sent to your email!', 'success');
+            }).catch((error) => {
+                showToast('Error: ' + error.message, 'error');
+            });
+        }
+
+        function deleteAccount() {
+            if (!confirm('⚠️ Are you sure you want to delete your account? This action cannot be undone!')) return;
+            if (!confirm('All your data will be permanently deleted. Are you sure?')) return;
+            showToast('🗑️ Account deletion request submitted. We will process this within 7 days.', 'warning');
+        }
+
+        auth.onAuthStateChanged(user => {
+            if (!user) { window.location.href = 'index.html'; }
+            else { loadSettings(); }
+        });
+
+        console.log('⚙️ Parent Settings loaded!');
+    </script>
+
+</body>
+</html>

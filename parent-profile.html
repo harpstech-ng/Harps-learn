@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Parent Profile - HarpsLearn</title>
+
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
+    <script src="https://upload-widget.cloudinary.com/global/all.js"></script>
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f0f2f5;
+            min-height: 100vh;
+        }
+
+        .navbar {
+            background: white;
+            padding: 0.6rem 1.2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        .navbar .logo {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #1a1a2e;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            cursor: pointer;
+        }
+        .navbar .logo span { color: #667eea; }
+        .navbar .back-btn {
+            background: none;
+            border: none;
+            font-size: 1.2rem;
+            cursor: pointer;
+            color: #666;
+            padding: 4px 10px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        .navbar .back-btn:hover { background: #f0f2f5; }
+
+        .container { max-width: 700px; margin: 0 auto; padding: 0.8rem; }
+
+        .page-header { margin-bottom: 1rem; }
+        .page-header h1 { font-size: 1.5rem; color: #1a1a2e; }
+        .page-header p { color: #666; font-size: 0.9rem; margin-top: 0.2rem; }
+
+        .profile-card {
+            background: white;
+            border-radius: 14px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            margin-bottom: 0.8rem;
+        }
+
+        .profile-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+        .profile-header .avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 2.5rem;
+            font-weight: 700;
+            object-fit: cover;
+            overflow: hidden;
+            border: 3px solid white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .profile-header .avatar:hover { transform: scale(1.05); }
+        .profile-header .avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .profile-header .info { flex: 1; }
+        .profile-header .info .name { font-weight: 700; font-size: 1.2rem; color: #1a1a2e; }
+        .profile-header .info .email { color: #666; font-size: 0.9rem; }
+        .profile-header .info .badge {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 2px 12px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            margin-top: 4px;
+        }
+        .profile-header .change-photo-btn {
+            background: none;
+            border: 2px solid #667eea;
+            color: #667eea;
+            padding: 4px 12px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .profile-header .change-photo-btn:hover { background: #667eea; color: white; }
+
+        .form-group { margin-bottom: 1rem; }
+        .form-group label { display: block; font-weight: 600; margin-bottom: 0.3rem; color: #333; font-size: 0.9rem; }
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 10px 14px;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            font-family: inherit;
+        }
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 0.6rem 1.2rem;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+            width: 100%;
+        }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(102,126,234,0.4); }
+
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 0.6rem 1.2rem;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+            width: 100%;
+        }
+        .btn-danger:hover { background: #dc2626; }
+
+        .secret-box {
+            background: #f8f9fa;
+            padding: 0.8rem;
+            border-radius: 10px;
+            text-align: center;
+            margin: 0.5rem 0;
+            border: 2px dashed #e5e7eb;
+        }
+        .secret-box code {
+            font-size: 1.1rem;
+            letter-spacing: 2px;
+            font-weight: bold;
+            color: #764ba2;
+            background: white;
+            padding: 0.4rem 1rem;
+            border-radius: 6px;
+            display: inline-block;
+            margin: 0.3rem 0;
+            border: 1px solid #e5e7eb;
+            word-break: break-all;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: white;
+            padding: 0.8rem 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            z-index: 5000;
+            animation: toastSlide 0.4s ease;
+            max-width: 90%;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+        .toast.success { background: #22c55e; }
+        .toast.error { background: #ef4444; }
+        .toast.warning { background: #f59e0b; }
+        @keyframes toastSlide { from { transform: translateX(-50%) translateY(100px); opacity: 0; } to { transform: translateX(-50%) translateY(0); opacity: 1; } }
+
+        .text-muted { color: #666; font-size: 0.85rem; }
+        .flex-between { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; }
+        .mt-1 { margin-top: 0.5rem; }
+
+        @media (max-width: 600px) {
+            .navbar { padding: 0.4rem 0.8rem; }
+            .navbar .logo { font-size: 1.1rem; }
+            .container { padding: 0.4rem; }
+            .profile-header { flex-direction: column; text-align: center; }
+            .profile-header .info { text-align: center; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="navbar">
+        <div class="logo" onclick="window.location.href='parent-dashboard.html'">👪 Harps<span>Learn</span></div>
+        <button class="back-btn" onclick="window.location.href='parent-dashboard.html'">✕</button>
+    </div>
+
+    <div class="container">
+        <div class="page-header">
+            <h1>👤 My Profile</h1>
+            <p>Manage your personal information and preferences.</p>
+        </div>
+
+        <div class="profile-card">
+            <div class="profile-header">
+                <div class="avatar" id="profileAvatar" onclick="uploadProfilePic()">👤</div>
+                <div class="info">
+                    <div class="name" id="profileName">Loading...</div>
+                    <div class="email" id="profileEmail">loading@email.com</div>
+                    <span class="badge" id="profileRole">Parent</span>
+                    <div style="margin-top:0.3rem;">
+                        <button class="change-photo-btn" onclick="uploadProfilePic()">📷 Change Photo</button>
+                    </div>
+                </div>
+            </div>
+
+            <form id="profileForm">
+                <div class="form-group">
+                    <label>Full Name</label>
+                    <input type="text" id="editName" placeholder="Your full name" />
+                </div>
+
+                <div class="form-group">
+                    <label>Phone Number</label>
+                    <input type="tel" id="editPhone" placeholder="+2348012345678" />
+                </div>
+
+                <button type="submit" class="btn-primary">💾 Update Profile</button>
+            </form>
+        </div>
+
+        <!-- Parent Secret Key -->
+        <div class="profile-card">
+            <h3 style="font-size:1rem;margin-bottom:0.5rem;">🔐 Parent Secret Key</h3>
+            <p class="text-muted">Share this key with your child to link their account.</p>
+            <div class="secret-box">
+                <code id="parentKeyDisplay">Loading...</code>
+            </div>
+            <div style="display:flex;gap:0.5rem;">
+                <button onclick="copyParentKey()" class="btn-primary" style="flex:1;padding:0.4rem;font-size:0.8rem;">📋 Copy</button>
+                <button onclick="generateNewParentKey()" class="btn-primary" style="flex:1;padding:0.4rem;font-size:0.8rem;background:#f59e0b;">🔄 New Key</button>
+            </div>
+        </div>
+
+        <!-- Danger Zone -->
+        <div class="profile-card" style="border:2px solid #ef4444;">
+            <h3 style="font-size:1rem;color:#ef4444;margin-bottom:0.5rem;">⚠️ Danger Zone</h3>
+            <button class="btn-danger" onclick="deleteAccount()">🗑️ Delete Account</button>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDy-j3_iZwv7IE7HYHircFeEWGdoGizf5M",
+            authDomain: "harpslearn.firebaseapp.com",
+            projectId: "harpslearn",
+            storageBucket: "harpslearn.firebasestorage.app",
+            messagingSenderId: "625210543198",
+            appId: "1:625210543198:web:6faebd2af1465facf338cf",
+            measurementId: "G-8Z8HVC5V5J"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        const CLOUDINARY_CONFIG = {
+            cloudName: 'dwc2sthsd',
+            unsignedPreset: 'harpslearn_unsigned'
+        };
+
+        let currentUser = null;
+        let userData = null;
+
+        function showToast(message, type = 'info') {
+            const existing = document.querySelector('.toast');
+            if (existing) existing.remove();
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => { toast.remove(); }, 4000);
+        }
+
+        function generateKey() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let key = '';
+            for (let i = 0; i < 16; i++) {
+                key += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return key;
+        }
+
+        async function loadProfile() {
+            try {
+                const user = auth.currentUser;
+                if (!user) {
+                    window.location.href = 'index.html';
+                    return;
+                }
+
+                currentUser = user;
+
+                const userDoc = await db.collection('users').doc(user.uid).get();
+                userData = userDoc.data();
+
+                if (!userData || userData.role !== 'parent') {
+                    showToast('This page is for parents only', 'error');
+                    setTimeout(() => window.location.href = 'index.html', 1500);
+                    return;
+                }
+
+                const name = userData.fullName || 'Parent';
+                document.getElementById('profileName').textContent = name;
+                document.getElementById('profileEmail').textContent = userData.email || 'No email';
+                document.getElementById('profileRole').textContent = 'Parent';
+                document.getElementById('editName').value = name;
+                document.getElementById('editPhone').value = userData.phone || '';
+
+                if (userData.profilePic) {
+                    document.getElementById('profileAvatar').innerHTML = `<img src="${userData.profilePic}" alt="Profile" />`;
+                }
+
+                const parentDoc = await db.collection('parents').doc(user.uid).get();
+                const parentData = parentDoc.data();
+                if (parentData) {
+                    const key = parentData.secretKey || generateKey();
+                    document.getElementById('parentKeyDisplay').textContent = key;
+                    if (!parentData.secretKey) {
+                        await db.collection('parents').doc(user.uid).update({ secretKey: key });
+                    }
+                }
+
+            } catch (error) {
+                console.error('Error loading profile:', error);
+                showToast('Error loading profile', 'error');
+            }
+        }
+
+        function uploadProfilePic() {
+            if (typeof cloudinary === 'undefined') {
+                showToast('Loading uploader...', 'warning');
+                return;
+            }
+
+            const widget = cloudinary.createUploadWidget({
+                cloudName: CLOUDINARY_CONFIG.cloudName,
+                uploadPreset: CLOUDINARY_CONFIG.unsignedPreset,
+                sources: ['local', 'camera'],
+                multiple: false,
+                maxFileSize: 2000000,
+                resourceType: 'image',
+                clientAllowedFormats: ['jpg', 'jpeg', 'png']
+            }, async (error, result) => {
+                if (error) {
+                    showToast('❌ Upload error: ' + error.message, 'error');
+                    return;
+                }
+
+                if (result && result.event === 'success') {
+                    const fileUrl = result.info.secure_url || result.info.url;
+
+                    try {
+                        const user = auth.currentUser;
+                        if (!user) return;
+
+                        await db.collection('users').doc(user.uid).update({
+                            profilePic: fileUrl
+                        });
+
+                        document.getElementById('profileAvatar').innerHTML = `<img src="${fileUrl}" alt="Profile" />`;
+                        showToast('✅ Profile picture updated!', 'success');
+                    } catch (e) {
+                        showToast('Error saving: ' + e.message, 'error');
+                    }
+                }
+            });
+
+            widget.open();
+        }
+
+        document.getElementById('profileForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const name = document.getElementById('editName').value.trim();
+            const phone = document.getElementById('editPhone').value.trim();
+
+            if (!name) {
+                showToast('Please enter your name', 'error');
+                return;
+            }
+
+            const btn = this.querySelector('.btn-primary');
+            btn.disabled = true;
+            btn.textContent = '⏳ Updating...';
+
+            try {
+                const user = auth.currentUser;
+                if (!user) return;
+
+                await db.collection('users').doc(user.uid).update({
+                    fullName: name,
+                    phone: phone
+                });
+
+                document.getElementById('profileName').textContent = name;
+                showToast('✅ Profile updated!', 'success');
+
+            } catch (error) {
+                showToast('Error: ' + error.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '💾 Update Profile';
+            }
+        });
+
+        function copyParentKey() {
+            const key = document.getElementById('parentKeyDisplay').textContent;
+            navigator.clipboard.writeText(key).then(() => {
+                showToast('📋 Key copied!', 'success');
+            }).catch(() => {
+                const input = document.createElement('input');
+                input.value = key;
+                document.body.appendChild(input);
+                input.select();
+                document.execCommand('copy');
+                document.body.removeChild(input);
+                showToast('📋 Key copied!', 'success');
+            });
+        }
+
+        async function generateNewParentKey() {
+            try {
+                const user = auth.currentUser;
+                if (!user) return;
+
+                const newKey = generateKey();
+                await db.collection('parents').doc(user.uid).update({
+                    secretKey: newKey
+                });
+
+                document.getElementById('parentKeyDisplay').textContent = newKey;
+                showToast('🔑 New key generated!', 'success');
+            } catch (error) {
+                showToast('Error generating key', 'error');
+            }
+        }
+
+        function deleteAccount() {
+            if (!confirm('⚠️ Are you sure you want to delete your account? This action cannot be undone!')) return;
+            if (!confirm('All your data will be permanently deleted. Are you sure?')) return;
+            showToast('🗑️ Account deletion request submitted. We will process this within 7 days.', 'warning');
+        }
+
+        auth.onAuthStateChanged(user => {
+            if (!user) { window.location.href = 'index.html'; }
+            else { loadProfile(); }
+        });
+
+        console.log('👤 Parent Profile loaded!');
+    </script>
+
+</body>
+</html>

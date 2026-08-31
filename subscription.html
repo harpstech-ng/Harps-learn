@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Subscription - HarpsLearn</title>
+
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f0f2f5;
+            min-height: 100vh;
+        }
+
+        .navbar {
+            background: white;
+            padding: 0.6rem 1.2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        .navbar .logo {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #1a1a2e;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            cursor: pointer;
+        }
+        .navbar .logo span { color: #667eea; }
+        .navbar .back-btn {
+            background: none;
+            border: none;
+            font-size: 1.2rem;
+            cursor: pointer;
+            color: #666;
+            padding: 4px 10px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        .navbar .back-btn:hover { background: #f0f2f5; }
+
+        .container { max-width: 700px; margin: 0 auto; padding: 0.8rem; }
+
+        .page-header { margin-bottom: 1rem; }
+        .page-header h1 { font-size: 1.5rem; color: #1a1a2e; }
+        .page-header p { color: #666; font-size: 0.9rem; margin-top: 0.2rem; }
+
+        .plan-card {
+            background: white;
+            border-radius: 14px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .plan-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
+        .plan-card.popular { border: 2px solid #667eea; }
+        .plan-card.popular::before {
+            content: '⭐ POPULAR';
+            position: absolute;
+            top: 10px;
+            right: -30px;
+            background: #667eea;
+            color: white;
+            font-size: 0.6rem;
+            font-weight: 700;
+            padding: 3px 40px;
+            transform: rotate(45deg);
+        }
+        .plan-card .plan-name { font-size: 1.3rem; font-weight: 700; color: #1a1a2e; }
+        .plan-card .plan-price { font-size: 2rem; font-weight: 700; color: #667eea; margin: 0.3rem 0; }
+        .plan-card .plan-price span { font-size: 0.9rem; color: #666; font-weight: 400; }
+        .plan-card .plan-features { list-style: none; padding: 0; margin: 0.5rem 0; }
+        .plan-card .plan-features li { padding: 0.3rem 0; color: #555; font-size: 0.9rem; display: flex; align-items: center; gap: 0.5rem; }
+        .plan-card .plan-features li::before { content: '✅'; font-size: 0.8rem; }
+        .plan-card .plan-btn {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 0.5rem;
+        }
+        .plan-card .plan-btn.btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+        .plan-card .plan-btn.btn-primary:hover { transform: scale(1.02); box-shadow: 0 4px 16px rgba(102,126,234,0.4); }
+        .plan-card .plan-btn.btn-secondary {
+            background: #f0f2f5;
+            color: #666;
+        }
+        .plan-card .plan-btn.active-plan {
+            background: #22c55e;
+            color: white;
+            cursor: default;
+        }
+
+        .current-plan {
+            background: #dcfce7;
+            border-radius: 14px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            text-align: center;
+            border: 2px solid #22c55e;
+        }
+        .current-plan .status { font-size: 1.1rem; font-weight: 700; color: #166534; }
+        .current-plan .details { color: #166534; font-size: 0.9rem; margin-top: 0.2rem; }
+
+        .child-info {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 0.8rem;
+            margin: 0.5rem 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .child-info .name { font-weight: 600; color: #1a1a2e; }
+        .child-info .status { font-size: 0.7rem; padding: 2px 10px; border-radius: 10px; font-weight: 600; }
+        .child-info .status.active { background: #dcfce7; color: #166534; }
+        .child-info .status.inactive { background: #fee2e2; color: #991b1b; }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: white;
+            padding: 0.8rem 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            z-index: 5000;
+            animation: toastSlide 0.4s ease;
+            max-width: 90%;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+        .toast.success { background: #22c55e; }
+        .toast.error { background: #ef4444; }
+        .toast.warning { background: #f59e0b; }
+        @keyframes toastSlide { from { transform: translateX(-50%) translateY(100px); opacity: 0; } to { transform: translateX(-50%) translateY(0); opacity: 1; } }
+
+        .text-muted { color: #666; font-size: 0.85rem; }
+        .text-center { text-align: center; }
+        .mt-1 { margin-top: 0.5rem; }
+
+        @media (max-width: 600px) {
+            .navbar { padding: 0.4rem 0.8rem; }
+            .navbar .logo { font-size: 1.1rem; }
+            .container { padding: 0.4rem; }
+            .plan-card { padding: 1rem; }
+            .plan-card .plan-price { font-size: 1.5rem; }
+            .child-info { flex-direction: column; align-items: stretch; gap: 0.3rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="navbar">
+        <div class="logo" onclick="window.location.href='parent-dashboard.html'">👪 Harps<span>Learn</span></div>
+        <button class="back-btn" onclick="window.location.href='parent-dashboard.html'">✕</button>
+    </div>
+
+    <div class="container">
+        <div class="page-header">
+            <h1>💎 Subscription Plans</h1>
+            <p>Subscribe once and all your children get premium access! 🎉</p>
+        </div>
+
+        <div id="currentPlan">
+            <!-- Will be populated by JS -->
+        </div>
+
+        <div id="childrenList">
+            <!-- Will be populated by JS -->
+        </div>
+
+        <div id="plansList">
+            <div style="text-align:center;padding:2rem;color:#999;">
+                <span style="font-size:2rem;display:block;margin-bottom:0.5rem;">💎</span>
+                Loading plans...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDy-j3_iZwv7IE7HYHircFeEWGdoGizf5M",
+            authDomain: "harpslearn.firebaseapp.com",
+            projectId: "harpslearn",
+            storageBucket: "harpslearn.firebasestorage.app",
+            messagingSenderId: "625210543198",
+            appId: "1:625210543198:web:6faebd2af1465facf338cf",
+            measurementId: "G-8Z8HVC5V5J"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        let currentSubscription = null;
+        let linkedChildren = [];
+        const plans = [
+            {
+                id: 'free',
+                name: 'Free',
+                price: 0,
+                currency: '₦',
+                period: 'forever',
+                features: [
+                    '✅ 3 Free Courses per child',
+                    '✅ Basic Quizzes',
+                    '✅ Community Access',
+                    '✅ Offline Lessons (2 per child)',
+                    '❌ Premium Courses',
+                    '❌ Live Tutoring',
+                    '❌ Full Reports'
+                ],
+                popular: false
+            },
+            {
+                id: 'basic',
+                name: 'Basic Family',
+                price: 2000,
+                currency: '₦',
+                period: 'month',
+                features: [
+                    '✅ 10+ Premium Courses per child',
+                    '✅ Unlimited Quizzes',
+                    '✅ Community Access',
+                    '✅ Offline Lessons (10 per child)',
+                    '✅ Progress Tracking',
+                    '✅ Basic Reports',
+                    '❌ Live Tutoring'
+                ],
+                popular: false
+            },
+            {
+                id: 'premium',
+                name: 'Premium Family',
+                price: 5000,
+                currency: '₦',
+                period: 'month',
+                features: [
+                    '✅ All Courses Unlimited per child',
+                    '✅ Unlimited Quizzes',
+                    '✅ Community Access',
+                    '✅ Offline Lessons (Unlimited per child)',
+                    '✅ Progress Tracking',
+                    '✅ Live Tutoring',
+                    '✅ Certificate on Completion',
+                    '✅ Full Reports',
+                    '✅ Priority Support'
+                ],
+                popular: true
+            },
+            {
+                id: 'yearly',
+                name: 'Yearly Family',
+                price: 45000,
+                currency: '₦',
+                period: 'year',
+                features: [
+                    '✅ All Premium Features',
+                    '✅ 2 Months Free',
+                    '✅ Best Value',
+                    '✅ Unlimited Everything per child',
+                    '✅ Priority Support',
+                    '✅ Certificate on Completion'
+                ],
+                popular: false
+            }
+        ];
+
+        function showToast(message, type = 'info') {
+            const existing = document.querySelector('.toast');
+            if (existing) existing.remove();
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => { toast.remove(); }, 4000);
+        }
+
+        async function loadSubscription() {
+            try {
+                const user = auth.currentUser;
+                if (!user) { window.location.href = 'index.html'; return; }
+
+                // Get user role
+                const userDoc = await db.collection('users').doc(user.uid).get();
+                const userData = userDoc.data();
+
+                if (!userData) { showToast('User not found', 'error'); return; }
+
+                // If not parent, redirect
+                if (userData.role !== 'parent') {
+                    showToast('Only parents can manage subscriptions', 'warning');
+                    window.location.href = 'student-dashboard.html';
+                    return;
+                }
+
+                // Get current subscription
+                const subSnapshot = await db.collection('subscriptions')
+                    .where('userId', '==', user.uid)
+                    .where('status', '==', 'active')
+                    .get();
+
+                let currentPlan = 'free';
+                subSnapshot.forEach(doc => {
+                    const data = doc.data();
+                    currentPlan = data.planId || 'free';
+                    currentSubscription = data;
+                });
+
+                // Get linked children
+                const childSnapshot = await db.collection('students')
+                    .where('parentId', '==', user.uid)
+                    .get();
+
+                linkedChildren = [];
+                for (const doc of childSnapshot.docs) {
+                    const data = doc.data();
+                    const childUserDoc = await db.collection('users').doc(data.userId).get();
+                    const childUserData = childUserDoc.exists ? childUserDoc.data() : {};
+                    linkedChildren.push({
+                        id: doc.id,
+                        ...data,
+                        userData: childUserData
+                    });
+                }
+
+                renderCurrentPlan(currentPlan);
+                renderChildren(linkedChildren, currentPlan);
+                renderPlans(currentPlan);
+
+            } catch (error) {
+                console.error('Error loading subscription:', error);
+                showToast('Error loading subscription', 'error');
+                renderPlans('free');
+            }
+        }
+
+        function renderCurrentPlan(currentPlan) {
+            const container = document.getElementById('currentPlan');
+            const plan = plans.find(p => p.id === currentPlan);
+
+            if (!plan || currentPlan === 'free') {
+                container.innerHTML = `
+                    <div class="current-plan" style="background:#fef3c7;border-color:#f59e0b;">
+                        <div class="status" style="color:#92400e;">🆓 Free Plan</div>
+                        <div class="details">Upgrade to unlock premium features for all your children!</div>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = `
+                <div class="current-plan">
+                    <div class="status">✅ ${plan.name} Active</div>
+                    <div class="details">${plan.currency}${plan.price.toLocaleString()}/${plan.period}</div>
+                    ${currentSubscription?.expiresAt ? `<div class="details">Renews: ${new Date(currentSubscription.expiresAt).toLocaleDateString()}</div>` : ''}
+                    <div class="details">👨‍👧 ${linkedChildren.length} children covered</div>
+                </div>
+            `;
+        }
+
+        function renderChildren(children, currentPlan) {
+            const container = document.getElementById('childrenList');
+
+            if (!children || children.length === 0) {
+                container.innerHTML = `
+                    <div class="text-muted" style="padding:0.5rem 0;text-align:center;">📭 No children linked yet</div>
+                `;
+                return;
+            }
+
+            const isPremium = currentPlan !== 'free';
+
+            let html = `<div style="background:white;border-radius:14px;padding:1rem;margin-bottom:1rem;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+                <h4 style="font-size:0.9rem;color:#1a1a2e;margin-bottom:0.5rem;">👨‍👧 Children Covered</h4>`;
+
+            for (const child of children) {
+                const name = child.userData?.fullName || 'Child';
+                const status = isPremium ? 'active' : 'inactive';
+                const statusLabel = isPremium ? '✅ Premium' : '🔒 Free';
+                const statusClass = isPremium ? 'active' : 'inactive';
+
+                html += `
+                    <div class="child-info">
+                        <span class="name">${name}</span>
+                        <span class="status ${statusClass}">${statusLabel}</span>
+                    </div>
+                `;
+            }
+
+            html += `</div>`;
+            container.innerHTML = html;
+        }
+
+        function renderPlans(currentPlan) {
+            const container = document.getElementById('plansList');
+
+            let html = '';
+            for (const plan of plans) {
+                const isActive = currentPlan === plan.id;
+                const isPopular = plan.popular;
+
+                html += `
+                    <div class="plan-card ${isPopular ? 'popular' : ''}">
+                        <div class="plan-name">${plan.name}</div>
+                        <div class="plan-price">
+                            ${plan.currency}${plan.price.toLocaleString()}
+                            <span>/${plan.period}</span>
+                        </div>
+                        <ul class="plan-features">
+                            ${plan.features.map(f => `<li>${f}</li>`).join('')}
+                        </ul>
+                        ${isActive ? `
+                            <button class="plan-btn active-plan">✅ Current Plan</button>
+                        ` : `
+                            <button class="plan-btn ${plan.price === 0 ? 'btn-secondary' : 'btn-primary'}" onclick="subscribe('${plan.id}')">
+                                ${plan.price === 0 ? '🆓 Stay Free' : `💳 Subscribe Now`}
+                            </button>
+                        `}
+                        ${plan.price > 0 ? `<div style="font-size:0.7rem;color:#999;text-align:center;margin-top:0.3rem;">👨‍👧 Covers all your children</div>` : ''}
+                    </div>
+                `;
+            }
+            container.innerHTML = html;
+        }
+
+        async function subscribe(planId) {
+            try {
+                const user = auth.currentUser;
+                if (!user) return;
+
+                if (planId === 'free') {
+                    showToast('You are already on the Free plan!', 'warning');
+                    return;
+                }
+
+                // Check if already subscribed
+                const subSnapshot = await db.collection('subscriptions')
+                    .where('userId', '==', user.uid)
+                    .where('status', '==', 'active')
+                    .get();
+
+                if (!subSnapshot.empty) {
+                    showToast('You already have an active subscription!', 'warning');
+                    return;
+                }
+
+                // Show payment popup (simulated)
+                showToast('💳 Payment processing...', 'warning');
+
+                // Simulate payment success
+                setTimeout(async () => {
+                    const expiresAt = new Date();
+                    if (planId === 'yearly') {
+                        expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+                    } else {
+                        expiresAt.setMonth(expiresAt.getMonth() + 1);
+                    }
+
+                    await db.collection('subscriptions').add({
+                        userId: user.uid,
+                        planId: planId,
+                        status: 'active',
+                        startedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                        expiresAt: expiresAt.toISOString()
+                    });
+
+                    // Notify all children
+                    const childSnapshot = await db.collection('students')
+                        .where('parentId', '==', user.uid)
+                        .get();
+
+                    for (const doc of childSnapshot.docs) {
+                        const childData = doc.data();
+                        await db.collection('notifications').add({
+                            userId: childData.userId,
+                            title: '🎉 Premium Activated!',
+                            message: `Your parent has subscribed to the ${plans.find(p => p.id === planId).name} plan! You now have full access to all features.`,
+                            read: false,
+                            type: 'premium',
+                            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                    }
+
+                    showToast('✅ Subscription successful! All your children now have premium access! 🎉', 'success');
+                    await loadSubscription();
+
+                }, 2000);
+
+            } catch (error) {
+                showToast('Error: ' + error.message, 'error');
+            }
+        }
+
+        auth.onAuthStateChanged(user => {
+            if (!user) { window.location.href = 'index.html'; }
+            else { loadSubscription(); }
+        });
+
+        console.log('💎 Subscription loaded!');
+        console.log('👨‍👧 Parents subscribe once, ALL children get premium!');
+    </script>
+
+</body>
+</html>

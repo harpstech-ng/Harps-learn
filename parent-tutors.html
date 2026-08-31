@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Find Tutors - HarpsLearn</title>
+
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f0f2f5;
+            min-height: 100vh;
+        }
+
+        /* ===== LOADING SCREEN ===== */
+        #loadingScreen {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.5s ease;
+        }
+        #loadingScreen .logo-text {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: white;
+            margin-bottom: 1.5rem;
+            letter-spacing: -1px;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+        #loadingScreen .logo-text span { color: #fbbf24; }
+        #loadingScreen .spinner-container {
+            width: 60px;
+            height: 60px;
+            position: relative;
+        }
+        #loadingScreen .spinner-container .ring {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 3px solid transparent;
+            border-top-color: white;
+            animation: spin 1s linear infinite;
+        }
+        #loadingScreen .spinner-container .ring:nth-child(2) {
+            width: 80%;
+            height: 80%;
+            top: 10%;
+            left: 10%;
+            border-top-color: #fbbf24;
+            animation-duration: 0.8s;
+            animation-direction: reverse;
+        }
+        #loadingScreen .spinner-container .ring:nth-child(3) {
+            width: 60%;
+            height: 60%;
+            top: 20%;
+            left: 20%;
+            border-top-color: #22c55e;
+            animation-duration: 1.2s;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        #loadingScreen p {
+            margin-top: 1.5rem;
+            color: rgba(255,255,255,0.8);
+            font-size: 0.95rem;
+            letter-spacing: 1px;
+        }
+        #loadingScreen .dots {
+            display: inline-block;
+            animation: dots 1.5s steps(4, end) infinite;
+        }
+        @keyframes dots {
+            0% { content: ''; }
+            25% { content: '.'; }
+            50% { content: '..'; }
+            75% { content: '...'; }
+        }
+        #loadingScreen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* ===== MAIN CONTENT ===== */
+        #mainContent { display: none; opacity: 0; transition: opacity 0.5s ease; }
+        #mainContent.visible { display: block; opacity: 1; }
+
+        .navbar {
+            background: white;
+            padding: 0.6rem 1.2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        .navbar .logo {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #1a1a2e;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            cursor: pointer;
+        }
+        .navbar .logo span { color: #667eea; }
+        .navbar .back-btn {
+            background: none;
+            border: none;
+            font-size: 1.2rem;
+            cursor: pointer;
+            color: #666;
+            padding: 4px 10px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        .navbar .back-btn:hover { background: #f0f2f5; }
+
+        .container { max-width: 700px; margin: 0 auto; padding: 0.8rem; }
+
+        .page-header { margin-bottom: 1rem; }
+        .page-header h1 { font-size: 1.5rem; color: #1a1a2e; }
+        .page-header p { color: #666; font-size: 0.9rem; margin-top: 0.2rem; }
+
+        .filter-section {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            overflow-x: auto;
+            padding: 0.2rem 0;
+            flex-wrap: wrap;
+        }
+        .filter-btn {
+            padding: 6px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 20px;
+            background: white;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+            color: #666;
+        }
+        .filter-btn:hover { border-color: #667eea; color: #667eea; }
+        .filter-btn.active { background: #667eea; color: white; border-color: #667eea; }
+
+        .tutor-card {
+            background: white;
+            border-radius: 14px;
+            padding: 1rem;
+            margin-bottom: 0.8rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            transition: all 0.3s ease;
+            cursor: default;
+        }
+        .tutor-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
+        .tutor-card .tutor-header {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .tutor-card .tutor-avatar {
+            width: 56px; height: 56px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 1.5rem;
+            flex-shrink: 0;
+            object-fit: cover;
+            overflow: hidden;
+        }
+        .tutor-card .tutor-avatar img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+        .tutor-card .tutor-info { flex: 1; }
+        .tutor-card .tutor-info .name { font-weight: 700; color: #1a1a2e; font-size: 1.05rem; }
+        .tutor-card .tutor-info .subjects { font-size: 0.8rem; color: #666; margin: 0.2rem 0; }
+        .tutor-card .tutor-info .rating { color: #f59e0b; font-size: 0.85rem; }
+        .tutor-card .tutor-info .rate { font-weight: 700; color: #667eea; font-size: 0.9rem; }
+        .tutor-card .tutor-info .bio-preview { font-size: 0.8rem; color: #666; margin: 0.3rem 0; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .tutor-card .tutor-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.8rem;
+            flex-wrap: wrap;
+        }
+        .tutor-card .tutor-actions button {
+            padding: 6px 16px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .tutor-card .tutor-actions .btn-book {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+        .tutor-card .tutor-actions .btn-book:hover { transform: scale(1.05); }
+        .tutor-card .tutor-actions .btn-profile {
+            background: #f0f2f5;
+            color: #666;
+        }
+        .tutor-card .tutor-actions .btn-profile:hover { background: #e5e7eb; }
+        .tutor-card .tutor-actions .btn-message {
+            background: #22c55e;
+            color: white;
+        }
+        .tutor-card .tutor-actions .btn-message:hover { transform: scale(1.05); }
+        .tutor-card .verified-badge {
+            display: inline-block;
+            background: #22c55e;
+            color: white;
+            font-size: 0.6rem;
+            padding: 2px 10px;
+            border-radius: 10px;
+            margin-left: 4px;
+        }
+
+        /* ===== TUTOR PROFILE MODAL ===== */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 4000;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            max-width: 500px;
+            width: 100%;
+            max-height: 85vh;
+            overflow-y: auto;
+            animation: slideUp 0.3s ease;
+        }
+        @keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .modal .close-modal {
+            float: right;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #999;
+        }
+        .modal .close-modal:hover { color: #333; }
+        .modal .tutor-profile-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin: 0 auto 0.75rem auto;
+            object-fit: cover;
+            overflow: hidden;
+        }
+        .modal .tutor-profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .modal .tutor-name { text-align: center; font-size: 1.3rem; font-weight: 700; color: #1a1a2e; }
+        .modal .tutor-badge { text-align: center; margin-bottom: 0.5rem; }
+        .modal .tutor-detail-row {
+            display: flex;
+            padding: 0.4rem 0;
+            border-bottom: 1px solid #f3f4f6;
+        }
+        .modal .tutor-detail-row .label { font-weight: 600; color: #666; width: 100px; min-width: 100px; }
+        .modal .tutor-detail-row .value { color: #333; flex: 1; }
+        .modal .tutor-bio { color: #555; font-size: 0.9rem; line-height: 1.6; margin: 0.5rem 0; }
+        .modal .modal-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+        }
+        .modal .modal-actions button {
+            flex: 1;
+            padding: 0.6rem;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 100px;
+        }
+        .modal .modal-actions .btn-book { background: linear-gradient(135deg, #667eea, #764ba2); color: white; }
+        .modal .modal-actions .btn-book:hover { transform: scale(1.05); }
+        .modal .modal-actions .btn-close { background: #f0f2f5; color: #666; }
+        .modal .modal-actions .btn-close:hover { background: #e5e7eb; }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: white;
+            padding: 0.8rem 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            z-index: 5000;
+            animation: toastSlide 0.4s ease;
+            max-width: 90%;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+        .toast.success { background: #22c55e; }
+        .toast.error { background: #ef4444; }
+        .toast.warning { background: #f59e0b; }
+        @keyframes toastSlide { from { transform: translateX(-50%) translateY(100px); opacity: 0; } to { transform: translateX(-50%) translateY(0); opacity: 1; } }
+
+        .text-muted { color: #666; font-size: 0.85rem; }
+        .flex-between { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; }
+        .mt-1 { margin-top: 0.5rem; }
+
+        @media (max-width: 600px) {
+            .navbar { padding: 0.4rem 0.8rem; }
+            .navbar .logo { font-size: 1.1rem; }
+            .container { padding: 0.4rem; }
+            .tutor-card .tutor-header { flex-wrap: wrap; }
+            .tutor-card .tutor-actions { flex-direction: column; }
+            .tutor-card .tutor-actions button { width: 100%; }
+            .modal { padding: 1.5rem; margin: 0.5rem; }
+            .modal .tutor-detail-row { flex-direction: column; }
+            .modal .tutor-detail-row .label { width: 100%; min-width: unset; margin-bottom: 0.2rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ===== LOADING SCREEN ===== -->
+    <div id="loadingScreen">
+        <div class="logo-text">👪 Harps<span>Learn</span></div>
+        <div class="spinner-container">
+            <div class="ring"></div>
+            <div class="ring"></div>
+            <div class="ring"></div>
+        </div>
+        <p>Finding tutors<span class="dots">...</span></p>
+    </div>
+
+    <!-- ===== MAIN CONTENT ===== -->
+    <div id="mainContent">
+
+        <div class="navbar">
+            <div class="logo" onclick="window.location.href='parent-dashboard.html'">👪 Harps<span>Learn</span></div>
+            <button class="back-btn" onclick="window.location.href='parent-dashboard.html'">✕</button>
+        </div>
+
+        <div class="container">
+            <div class="page-header">
+                <h1>👨‍🏫 Find Tutors</h1>
+                <p>Find verified tutors for your child. Book 1-on-1 sessions and track progress.</p>
+            </div>
+
+            <div class="filter-section">
+                <button class="filter-btn active" data-filter="all">📋 All</button>
+                <button class="filter-btn" data-filter="math">📐 Mathematics</button>
+                <button class="filter-btn" data-filter="english">📖 English</button>
+                <button class="filter-btn" data-filter="science">🔬 Science</button>
+                <button class="filter-btn" data-filter="top">⭐ Top Rated</button>
+            </div>
+
+            <div id="tutorList">
+                <div style="text-align:center;padding:2rem;color:#999;">
+                    <span style="font-size:2rem;display:block;margin-bottom:0.5rem;">👨‍🏫</span>
+                    Loading tutors...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== TUTOR PROFILE MODAL ===== -->
+    <div class="modal-overlay" id="tutorProfileModal">
+        <div class="modal">
+            <button class="close-modal" onclick="closeTutorProfile()">✕</button>
+            <div id="tutorProfileContent">
+                <!-- Dynamically populated -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDy-j3_iZwv7IE7HYHircFeEWGdoGizf5M",
+            authDomain: "harpslearn.firebaseapp.com",
+            projectId: "harpslearn",
+            storageBucket: "harpslearn.firebasestorage.app",
+            messagingSenderId: "625210543198",
+            appId: "1:625210543198:web:6faebd2af1465facf338cf",
+            measurementId: "G-8Z8HVC5V5J"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        let allTutors = [];
+        let currentUser = null;
+        let userData = null;
+
+        function showToast(message, type = 'info') {
+            const existing = document.querySelector('.toast');
+            if (existing) existing.remove();
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => { toast.remove(); }, 4000);
+        }
+
+        async function loadTutors() {
+            try {
+                const user = auth.currentUser;
+                if (!user) {
+                    document.getElementById('loadingScreen').classList.add('hidden');
+                    window.location.href = 'index.html';
+                    return;
+                }
+
+                currentUser = user;
+
+                const userDoc = await db.collection('users').doc(user.uid).get();
+                userData = userDoc.data();
+
+                if (userData.role !== 'parent') {
+                    showToast('This page is for parents only', 'error');
+                    setTimeout(() => window.location.href = 'parent-dashboard.html', 1500);
+                    document.getElementById('loadingScreen').classList.add('hidden');
+                    return;
+                }
+
+                const snapshot = await db.collection('tutors')
+                    .where('verificationStatus', '==', 'approved')
+                    .get();
+
+                allTutors = [];
+                for (const doc of snapshot.docs) {
+                    const data = doc.data();
+                    const tutorUserDoc = await db.collection('users').doc(data.userId).get();
+                    const tutorUserData = tutorUserDoc.exists ? tutorUserDoc.data() : {};
+                    allTutors.push({
+                        id: doc.id,
+                        ...data,
+                        userName: tutorUserData.fullName || 'Tutor',
+                        userEmail: tutorUserData.email || '',
+                        profilePic: tutorUserData.profilePic || ''
+                    });
+                }
+
+                // Sort by rating
+                allTutors.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+
+                renderTutors(allTutors);
+
+                document.getElementById('loadingScreen').classList.add('hidden');
+                document.getElementById('mainContent').classList.add('visible');
+
+            } catch (error) {
+                console.error('Error loading tutors:', error);
+                showToast('Error loading tutors', 'error');
+                document.getElementById('loadingScreen').classList.add('hidden');
+                document.getElementById('mainContent').classList.add('visible');
+                document.getElementById('tutorList').innerHTML = `
+                    <div class="text-muted" style="padding:2rem;text-align:center;">Error loading tutors. Please refresh.</div>
+                `;
+            }
+        }
+
+        function renderTutors(tutors) {
+            const container = document.getElementById('tutorList');
+
+            if (!tutors || tutors.length === 0) {
+                container.innerHTML = `
+                    <div class="text-muted" style="padding:2rem;text-align:center;">👨‍🏫 No tutors available yet</div>
+                `;
+                return;
+            }
+
+            let html = '';
+            for (const tutor of tutors) {
+                const name = tutor.userName || 'Tutor';
+                const initial = name.charAt(0).toUpperCase();
+                const subjects = Array.isArray(tutor.subjects) ? tutor.subjects.join(', ') : 'Multiple subjects';
+                const rating = tutor.rating || 0;
+                const rate = tutor.hourlyRate || 0;
+                const verified = tutor.isVerified ? '<span class="verified-badge">✅ Verified</span>' : '';
+                const bio = tutor.bio || 'Experienced tutor passionate about teaching.';
+
+                html += `
+                    <div class="tutor-card">
+                        <div class="tutor-header">
+                            <div class="tutor-avatar">
+                                ${tutor.profilePic ? `<img src="${tutor.profilePic}" alt="${name}" />` : initial}
+                            </div>
+                            <div class="tutor-info">
+                                <div class="name">${name} ${verified}</div>
+                                <div class="subjects">📚 ${subjects}</div>
+                                <div class="rating">⭐ ${rating.toFixed(1)} (${tutor.totalStudents || 0} students)</div>
+                                <div class="rate">₦${rate.toLocaleString()}/hour</div>
+                                <div class="bio-preview">${bio}</div>
+                            </div>
+                        </div>
+                        <div class="tutor-actions">
+                            <button class="btn-book" onclick="bookTutor('${tutor.id}', '${name}')">📚 Book Now</button>
+                            <button class="btn-profile" onclick="viewTutorProfile('${tutor.id}')">👁️ Profile</button>
+                            <button class="btn-message" onclick="messageTutor('${tutor.id}')">💬 Message</button>
+                        </div>
+                    </div>
+                `;
+            }
+            container.innerHTML = html;
+        }
+
+        // ============================================================
+        // 📚 BOOK TUTOR - Redirect to booking page
+        // ============================================================
+
+        function bookTutor(tutorId, tutorName) {
+            // Check if user has children linked
+            // For simplicity, redirect to booking page
+            window.location.href = `parent-book-now.html?tutor=${tutorId}`;
+        }
+
+        // ============================================================
+        // 💬 MESSAGE TUTOR
+        // ============================================================
+
+        function messageTutor(tutorId) {
+            window.location.href = `parent-messages.html?tutor=${tutorId}`;
+        }
+
+        // ============================================================
+        // 👁️ VIEW TUTOR PROFILE - FULL DETAILS (MODAL)
+        // ============================================================
+
+        async function viewTutorProfile(tutorId) {
+            try {
+                const tutor = allTutors.find(t => t.id === tutorId);
+                if (!tutor) {
+                    showToast('Tutor not found', 'error');
+                    return;
+                }
+
+                const name = tutor.userName || 'Tutor';
+                const initial = name.charAt(0).toUpperCase();
+                const subjects = Array.isArray(tutor.subjects) ? tutor.subjects.join(', ') : 'Multiple subjects';
+                const rating = tutor.rating || 0;
+                const rate = tutor.hourlyRate || 0;
+                const bio = tutor.bio || 'Experienced tutor passionate about teaching.';
+                const qualifications = tutor.qualification || 'Not specified';
+                const institution = tutor.institution || 'Not specified';
+                const experience = tutor.experience || 0;
+                const verified = tutor.isVerified ? '✅ Verified' : '⏳ Pending Verification';
+                const totalStudents = tutor.totalStudents || 0;
+                const completedSessions = tutor.completedSessions || 0;
+
+                const modalContent = document.getElementById('tutorProfileContent');
+                modalContent.innerHTML = `
+                    <div class="tutor-profile-avatar">
+                        ${tutor.profilePic ? `<img src="${tutor.profilePic}" alt="${name}" />` : initial}
+                    </div>
+                    <div class="tutor-name">${name}</div>
+                    <div class="tutor-badge"><span class="verified-badge">${verified}</span></div>
+                    <div style="margin:0.5rem 0;text-align:center;">
+                        <span style="color:#f59e0b;">⭐ ${rating.toFixed(1)}</span>
+                        <span style="color:#666;margin-left:1rem;">👨‍🎓 ${totalStudents} students</span>
+                        <span style="color:#666;margin-left:1rem;">✅ ${completedSessions} sessions</span>
+                    </div>
+
+                    <div style="margin:0.5rem 0;padding:0.5rem;background:#f8f9fa;border-radius:10px;text-align:center;">
+                        <div style="font-weight:700;font-size:1.1rem;color:#667eea;">₦${rate.toLocaleString()}/hour</div>
+                    </div>
+
+                    <div class="tutor-detail-row">
+                        <span class="label">📚 Subjects</span>
+                        <span class="value">${subjects}</span>
+                    </div>
+                    <div class="tutor-detail-row">
+                        <span class="label">🎓 Qualification</span>
+                        <span class="value">${qualifications}</span>
+                    </div>
+                    <div class="tutor-detail-row">
+                        <span class="label">🏫 Institution</span>
+                        <span class="value">${institution}</span>
+                    </div>
+                    <div class="tutor-detail-row">
+                        <span class="label">⏱️ Experience</span>
+                        <span class="value">${experience} years</span>
+                    </div>
+                    <div class="tutor-detail-row" style="border-bottom:none;">
+                        <span class="label">📝 Bio</span>
+                        <span class="value">${bio}</span>
+                    </div>
+
+                    <div class="modal-actions">
+                        <button class="btn-book" onclick="bookTutor('${tutor.id}', '${name}')">📚 Book Now</button>
+                        <button class="btn-close" onclick="closeTutorProfile()">Close</button>
+                    </div>
+                `;
+
+                document.getElementById('tutorProfileModal').classList.add('active');
+                document.body.style.overflow = 'hidden';
+
+            } catch (error) {
+                console.error('Error viewing tutor profile:', error);
+                showToast('Error loading tutor profile', 'error');
+            }
+        }
+
+        function closeTutorProfile() {
+            document.getElementById('tutorProfileModal').classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        // ============================================================
+        // 🎯 FILTER TUTORS
+        // ============================================================
+
+        document.querySelector('.filter-section').addEventListener('click', function(e) {
+            if (e.target.classList.contains('filter-btn')) {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+
+                const filter = e.target.dataset.filter;
+                let filtered = allTutors;
+
+                if (filter === 'top') {
+                    filtered = allTutors.filter(t => (t.rating || 0) >= 4.5);
+                } else if (filter !== 'all') {
+                    filtered = allTutors.filter(t => {
+                        const subjects = Array.isArray(t.subjects) ? t.subjects.join(' ').toLowerCase() : '';
+                        return subjects.includes(filter);
+                    });
+                }
+
+                renderTutors(filtered);
+            }
+        });
+
+        // ============================================================
+        // 🚀 AUTO-RUN
+        // ============================================================
+
+        auth.onAuthStateChanged(user => {
+            if (!user) {
+                document.getElementById('loadingScreen').classList.add('hidden');
+                window.location.href = 'index.html';
+            } else {
+                loadTutors();
+            }
+        });
+
+        console.log('👨‍🏫 Parent Tutors loaded!');
+        console.log('👁️ Full tutor profile view with modal!');
+        console.log('📚 Book Now redirects to parent-book-now.html');
+    </script>
+
+</body>
+</html>

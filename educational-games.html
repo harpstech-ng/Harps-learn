@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Educational Games - HarpsLearn</title>
+
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f0f2f5;
+            min-height: 100vh;
+        }
+
+        .navbar {
+            background: white;
+            padding: 0.6rem 1.2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        .navbar .logo {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #1a1a2e;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            cursor: pointer;
+        }
+        .navbar .logo span { color: #667eea; }
+        .navbar .back-btn {
+            background: none;
+            border: none;
+            font-size: 1.2rem;
+            cursor: pointer;
+            color: #666;
+            padding: 4px 10px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        .navbar .back-btn:hover { background: #f0f2f5; }
+
+        .container { max-width: 700px; margin: 0 auto; padding: 0.8rem; }
+
+        .page-header {
+            margin-bottom: 1rem;
+        }
+        .page-header h1 { font-size: 1.5rem; color: #1a1a2e; }
+        .page-header p { color: #666; font-size: 0.9rem; margin-top: 0.2rem; }
+
+        .game-card {
+            background: white;
+            border-radius: 14px;
+            padding: 1.2rem;
+            margin-bottom: 0.8rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .game-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
+        .game-card .game-icon { font-size: 3rem; flex-shrink: 0; }
+        .game-card .game-info { flex: 1; }
+        .game-card .game-name { font-weight: 700; color: #1a1a2e; font-size: 1.1rem; }
+        .game-card .game-desc { color: #666; font-size: 0.85rem; margin: 0.2rem 0; }
+        .game-card .game-meta {
+            display: flex;
+            gap: 0.8rem;
+            font-size: 0.75rem;
+            color: #999;
+            flex-wrap: wrap;
+        }
+        .game-card .game-meta span {
+            background: #f0f2f5;
+            padding: 2px 10px;
+            border-radius: 10px;
+        }
+        .game-card .play-btn {
+            padding: 8px 20px;
+            border: none;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            font-weight: 600;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .game-card .play-btn:hover { transform: scale(1.05); }
+        .game-card .play-btn.played {
+            background: #22c55e;
+        }
+
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.6rem;
+            margin-bottom: 1rem;
+        }
+        .stat-card {
+            background: white;
+            padding: 0.8rem;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+        .stat-card .number { font-size: 1.3rem; font-weight: 700; color: #667eea; }
+        .stat-card .label { color: #666; font-size: 0.65rem; margin-top: 0.2rem; }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: white;
+            padding: 0.8rem 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            z-index: 5000;
+            animation: toastSlide 0.4s ease;
+            max-width: 90%;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+        .toast.success { background: #22c55e; }
+        .toast.error { background: #ef4444; }
+        .toast.warning { background: #f59e0b; }
+        @keyframes toastSlide { from { transform: translateX(-50%) translateY(100px); opacity: 0; } to { transform: translateX(-50%) translateY(0); opacity: 1; } }
+
+        .text-muted { color: #666; font-size: 0.85rem; }
+        .flex-between { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; }
+
+        @media (max-width: 600px) {
+            .navbar { padding: 0.4rem 0.8rem; }
+            .navbar .logo { font-size: 1.1rem; }
+            .container { padding: 0.4rem; }
+            .game-card { padding: 1rem; flex-wrap: wrap; }
+            .game-card .game-icon { font-size: 2rem; }
+            .stats-row { grid-template-columns: 1fr 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="navbar">
+        <div class="logo" onclick="window.location.href='student-dashboard.html'">🎓 Harps<span>Learn</span></div>
+        <button class="back-btn" onclick="window.location.href='student-dashboard.html'">✕</button>
+    </div>
+
+    <div class="container">
+        <div class="page-header">
+            <h1>🎮 Educational Games</h1>
+            <p>Learn while having fun! Play quizzes, puzzles, and interactive games.</p>
+        </div>
+
+        <div class="stats-row">
+            <div class="stat-card">
+                <div class="number" id="gamesPlayed">0</div>
+                <div class="label">🎮 Games Played</div>
+            </div>
+            <div class="stat-card">
+                <div class="number" id="highestScore">0</div>
+                <div class="label">🏆 Highest Score</div>
+            </div>
+            <div class="stat-card">
+                <div class="number" id="totalPoints">0</div>
+                <div class="label">⭐ Total Points</div>
+            </div>
+        </div>
+
+        <div id="gamesList">
+            <div style="text-align:center;padding:2rem;color:#999;">
+                <span style="font-size:2rem;display:block;margin-bottom:0.5rem;">🎯</span>
+                Loading games...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDy-j3_iZwv7IE7HYHircFeEWGdoGizf5M",
+            authDomain: "harpslearn.firebaseapp.com",
+            projectId: "harpslearn",
+            storageBucket: "harpslearn.firebasestorage.app",
+            messagingSenderId: "625210543198",
+            appId: "1:625210543198:web:6faebd2af1465facf338cf",
+            measurementId: "G-8Z8HVC5V5J"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        let allGames = [];
+        let playedGames = new Set();
+
+        function showToast(message, type = 'info') {
+            const existing = document.querySelector('.toast');
+            if (existing) existing.remove();
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => { toast.remove(); }, 4000);
+        }
+
+        async function loadGames() {
+            try {
+                const user = auth.currentUser;
+                if (!user) { window.location.href = 'index.html'; return; }
+
+                // Get games from Firebase
+                const snapshot = await db.collection('games')
+                    .orderBy('createdAt', 'desc')
+                    .get();
+
+                allGames = [];
+                snapshot.forEach(doc => {
+                    allGames.push({ id: doc.id, ...doc.data() });
+                });
+
+                // If no games, create default
+                if (allGames.length === 0) {
+                    const defaultGames = [
+                        { name: 'Math Quiz Challenge', icon: '🧮', desc: 'Solve math problems and beat the clock!', category: 'Mathematics', difficulty: 'Medium', questions: 15, points: 100 },
+                        { name: 'Spelling Bee', icon: '🔤', desc: 'Spell words correctly and earn points!', category: 'English', difficulty: 'Easy', questions: 20, points: 80 },
+                        { name: 'Science Trivia', icon: '🔬', desc: 'Test your science knowledge with fun trivia!', category: 'Science', difficulty: 'Hard', questions: 12, points: 150 },
+                        { name: 'History Quest', icon: '📜', desc: 'Journey through history and answer questions!', category: 'History', difficulty: 'Medium', questions: 15, points: 120 },
+                        { name: 'Geography Explorer', icon: '🌍', desc: 'Explore the world and learn geography!', category: 'Geography', difficulty: 'Easy', questions: 20, points: 90 },
+                        { name: 'Grammar Ninja', icon: '⚔️', desc: 'Fight grammar errors and become a ninja!', category: 'English', difficulty: 'Hard', questions: 10, points: 130 },
+                        { name: 'Number Puzzle', icon: '🧩', desc: 'Solve number puzzles and sharpen your mind!', category: 'Mathematics', difficulty: 'Hard', questions: 8, points: 160 },
+                        { name: 'Word Search', icon: '🔍', desc: 'Find hidden words in the grid!', category: 'English', difficulty: 'Easy', questions: 25, points: 70 }
+                    ];
+
+                    for (const game of defaultGames) {
+                        await db.collection('games').add({
+                            ...game,
+                            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                            plays: 0,
+                            rating: 0,
+                            ratingCount: 0
+                        });
+                    }
+                    allGames = defaultGames;
+                }
+
+                // Load played games
+                const playedSnapshot = await db.collection('gameHistory')
+                    .where('studentId', '==', user.uid)
+                    .get();
+
+                let totalPoints = 0;
+                let highestScore = 0;
+                let gamesPlayed = 0;
+
+                playedSnapshot.forEach(doc => {
+                    const data = doc.data();
+                    playedGames.add(data.gameId);
+                    totalPoints += data.points || 0;
+                    highestScore = Math.max(highestScore, data.score || 0);
+                    gamesPlayed++;
+                });
+
+                document.getElementById('gamesPlayed').textContent = gamesPlayed;
+                document.getElementById('highestScore').textContent = highestScore;
+                document.getElementById('totalPoints').textContent = totalPoints;
+
+                renderGames(allGames);
+
+            } catch (error) {
+                console.error('Error loading games:', error);
+                showToast('Error loading games', 'error');
+            }
+        }
+
+        function renderGames(games) {
+            const container = document.getElementById('gamesList');
+
+            if (!games || games.length === 0) {
+                container.innerHTML = `
+                    <div class="text-muted" style="padding:2rem;text-align:center;">🎯 No games available yet</div>
+                `;
+                return;
+            }
+
+            let html = '';
+            for (const game of games) {
+                const isPlayed = playedGames.has(game.id);
+                const difficultyColor = game.difficulty === 'Easy' ? '#22c55e' : game.difficulty === 'Medium' ? '#f59e0b' : '#ef4444';
+
+                html += `
+                    <div class="game-card">
+                        <div class="game-icon">${game.icon || '🎮'}</div>
+                        <div class="game-info">
+                            <div class="game-name">${game.name}</div>
+                            <div class="game-desc">${game.desc || 'Fun educational game'}</div>
+                            <div class="game-meta">
+                                <span>📚 ${game.category || 'General'}</span>
+                                <span style="color:${difficultyColor};">🎯 ${game.difficulty || 'Medium'}</span>
+                                <span>📝 ${game.questions || 10} questions</span>
+                                <span>⭐ ${game.points || 100} points</span>
+                                ${game.plays ? `<span>👥 ${game.plays} plays</span>` : ''}
+                            </div>
+                        </div>
+                        <button class="play-btn ${isPlayed ? 'played' : ''}" onclick="playGame('${game.id}')">
+                            ${isPlayed ? '✅ Play Again' : '🎮 Play Now'}
+                        </button>
+                    </div>
+                `;
+            }
+            container.innerHTML = html;
+        }
+
+        async function playGame(gameId) {
+            try {
+                const user = auth.currentUser;
+                if (!user) return;
+
+                const game = allGames.find(g => g.id === gameId);
+                if (!game) { showToast('Game not found', 'error'); return; }
+
+                // Simulate game play - Show a quick quiz
+                const score = Math.floor(Math.random() * 100) + 30;
+                const points = Math.floor(score / 2) + 10;
+
+                // Save history
+                await db.collection('gameHistory').add({
+                    studentId: user.uid,
+                    gameId: gameId,
+                    gameName: game.name,
+                    score: score,
+                    points: points,
+                    playedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                // Update game plays
+                await db.collection('games').doc(gameId).update({
+                    plays: firebase.firestore.FieldValue.increment(1)
+                });
+
+                playedGames.add(gameId);
+                showToast(`🎉 ${game.name}! Score: ${score}% | Points: ${points}`, 'success');
+
+                await loadGames();
+
+            } catch (error) {
+                showToast('Error: ' + error.message, 'error');
+            }
+        }
+
+        auth.onAuthStateChanged(user => {
+            if (!user) { window.location.href = 'index.html'; }
+            else { loadGames(); }
+        });
+
+        console.log('🎮 Educational Games loaded!');
+    </script>
+
+</body>
+</html>
