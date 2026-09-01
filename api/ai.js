@@ -19,15 +19,16 @@ export default async function handler(req, res) {
   }
 
   let systemPrompt = type === 'summarize'
-    ? 'Summarize the following text concisely in 3-5 sentences.'
-    : 'You are a helpful academic tutor for African students. Answer clearly and simply.';
+    ? 'Summarize the following text concisely in 3-5 sentences. Keep the key points.'
+    : 'You are a helpful academic tutor for African students preparing for WAEC, NECO, BECE, KCSE, and JAMB exams. Answer clearly, simply, and with examples where helpful.';
 
   let userContent = prompt;
   if (image) {
-    userContent += `\n\n[Image: ${image}]`;
+    userContent += `\n\n[Image uploaded: ${image}] Please answer based on this image if relevant.`;
   }
 
   try {
+    // ✅ USING A WORKING MODEL: Mixtral 8x7B
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -35,8 +36,7 @@ export default async function handler(req, res) {
         'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        // ✅ FIXED: Using a working model name
-        model: 'llama3-70b-8192',
+        model: 'mixtral-8x7b-32768', // <-- FIXED: working model
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userContent }
