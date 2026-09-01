@@ -20,15 +20,15 @@ export default async function handler(req, res) {
 
   let systemPrompt = type === 'summarize'
     ? 'Summarize the following text concisely in 3-5 sentences. Keep the key points.'
-    : 'You are a helpful academic tutor for African students preparing for WAEC, NECO, BECE, KCSE, and JAMB exams. Answer clearly, simply, and with examples where helpful.';
+    : 'You are a helpful academic tutor for African students. Answer clearly and simply.';
 
   let userContent = prompt;
   if (image) {
-    userContent += `\n\n[Image uploaded: ${image}] Please answer based on this image if relevant.`;
+    userContent += `\n\n[Image: ${image}]`;
   }
 
   try {
-    // ✅ USING LATEST SUPPORTED MODEL: Llama 3.1 70B
+    // ✅ USING LATEST GROQ MODEL: Llama 3.3 70B
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -36,7 +36,7 @@ export default async function handler(req, res) {
         'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model: 'llama-3.1-70b-versatile', // <-- FIXED: working model
+        model: 'llama-3.3-70b-versatile', // <-- LATEST
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userContent }
