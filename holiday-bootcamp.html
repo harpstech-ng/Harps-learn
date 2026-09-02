@@ -83,6 +83,16 @@
         .page-header h1 { font-size: 1.5rem; color: #1a1a2e; }
         .page-header p { color: #666; font-size: 0.9rem; margin-top: 0.2rem; }
 
+        .info-box {
+            background: linear-gradient(135deg, #f0f4ff, #e8edff);
+            border: 1px solid #dbeafe;
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        .info-box h4 { color: #1a1a2e; margin-bottom: 0.3rem; }
+        .info-box p { color: #666; font-size: 0.85rem; line-height: 1.5; }
+
         .filter-section {
             display: flex;
             gap: 0.5rem;
@@ -173,17 +183,23 @@
             color: #667eea;
         }
         .course-card .course-actions .btn-outline:hover { background: #667eea; color: white; }
-        .course-card .badge {
+        .course-card .course-actions .btn-details {
+            background: #f0f2f5;
+            color: #666;
+        }
+        .course-card .course-actions .btn-details:hover { background: #e5e7eb; }
+
+        .badge {
             display: inline-block;
             padding: 2px 10px;
             border-radius: 12px;
             font-size: 0.65rem;
             font-weight: 600;
         }
-        .course-card .badge.popular { background: #fef3c7; color: #92400e; }
-        .course-card .badge.completed { background: #dcfce7; color: #166534; }
-        .course-card .badge.in-progress { background: #fef3c7; color: #92400e; }
-        .course-card .badge.price { background: #dcfce7; color: #166534; }
+        .badge.popular { background: #fef3c7; color: #92400e; }
+        .badge.completed { background: #dcfce7; color: #166534; }
+        .badge.in-progress { background: #fef3c7; color: #92400e; }
+        .badge.price { background: #dcfce7; color: #166534; }
 
         .enrolled-badge {
             display: inline-block;
@@ -219,20 +235,13 @@
         .toast.success { background: #22c55e; }
         .toast.error { background: #ef4444; }
         .toast.warning { background: #f59e0b; }
-        @keyframes toastSlide { from { transform: translateX(-50%) translateY(100px); opacity: 0; } to { transform: translateX(-50%) translateY(0); opacity: 1; } }
+        @keyframes toastSlide {
+            from { transform: translateX(-50%) translateY(100px); opacity: 0; }
+            to { transform: translateX(-50%) translateY(0); opacity: 1; }
+        }
 
         .empty-state { text-align: center; padding: 2rem; color: #999; }
         .empty-state .icon { font-size: 3rem; display: block; margin-bottom: 0.5rem; }
-
-        .info-box {
-            background: #f0f4ff;
-            border: 1px solid #dbeafe;
-            border-radius: 12px;
-            padding: 1rem;
-            margin-bottom: 1rem;
-        }
-        .info-box h4 { color: #1a1a2e; margin-bottom: 0.3rem; }
-        .info-box p { color: #666; font-size: 0.85rem; }
 
         @media (max-width: 600px) {
             .navbar { padding: 0.4rem 0.8rem; }
@@ -246,44 +255,53 @@
 </head>
 <body>
 
+    <!-- ===== LOADING SCREEN ===== -->
     <div id="loadingScreen">
         <div class="logo-text">📚 Harps<span>Learn</span></div>
         <div class="spinner"></div>
         <p>Loading bootcamp courses...</p>
     </div>
 
+    <!-- ===== MAIN CONTENT ===== -->
     <div id="mainContent">
 
+        <!-- ===== NAVBAR ===== -->
         <div class="navbar">
             <div class="logo" onclick="window.location.href='student-dashboard.html'">📚 Harps<span>Learn</span></div>
             <button class="back-btn" onclick="window.location.href='student-dashboard.html'">✕</button>
         </div>
 
+        <!-- ===== MAIN CONTAINER ===== -->
         <div class="container">
             <div class="page-header">
                 <h1>📚 Holiday Bootcamp</h1>
                 <p>4-6 week intensive courses for WAEC/NECO/JAMB exams. 🇳🇬</p>
             </div>
 
+            <!-- ===== HOW IT WORKS ===== -->
             <div class="info-box">
                 <h4>💡 How It Works</h4>
                 <p>
-                    📚 Parents pay for the course, you get access to all lessons.<br>
-                    🎓 Complete lessons at your own pace during the holidays.<br>
-                    🏆 Get a certificate when you finish the course.<br>
-                    📊 Your parent can track your progress on their dashboard.
+                    👨‍🏫 <strong>Tutors</strong> create courses with lessons (text, audio, whiteboard, video, quizzes).<br>
+                    📚 <strong>Students</strong> browse courses and request enrollment.<br>
+                    👨‍👩‍👧 <strong>Parents</strong> approve payment on their dashboard.<br>
+                    🎓 <strong>Students</strong> learn at their own pace and track progress.<br>
+                    🏆 <strong>Certificate</strong> issued when course is completed.
                 </p>
             </div>
 
+            <!-- ===== FILTERS ===== -->
             <div class="filter-section">
                 <button class="filter-btn active" data-filter="all">📋 All</button>
                 <button class="filter-btn" data-filter="waec">📝 WAEC</button>
                 <button class="filter-btn" data-filter="neco">📝 NECO</button>
                 <button class="filter-btn" data-filter="jamb">📝 JAMB</button>
                 <button class="filter-btn" data-filter="bece">📝 BECE</button>
+                <button class="filter-btn" data-filter="kcse">📝 KCSE</button>
                 <button class="filter-btn" data-filter="enrolled">✅ Enrolled</button>
             </div>
 
+            <!-- ===== COURSES LIST ===== -->
             <div id="coursesList">
                 <div class="empty-state">
                     <span class="icon">📚</span>
@@ -294,6 +312,9 @@
     </div>
 
     <script>
+        // ============================================================
+        // 🔥 FIREBASE CONFIG
+        // ============================================================
         const firebaseConfig = {
             apiKey: "AIzaSyDy-j3_iZwv7IE7HYHircFeEWGdoGizf5M",
             authDomain: "harpslearn.firebaseapp.com",
@@ -312,6 +333,9 @@
         let enrolledCourses = new Set();
         let currentUser = null;
 
+        // ============================================================
+        // 🛠️ UTILITY
+        // ============================================================
         function showToast(message, type = 'info') {
             const existing = document.querySelector('.toast');
             if (existing) existing.remove();
@@ -322,6 +346,9 @@
             setTimeout(() => { toast.remove(); }, 4000);
         }
 
+        // ============================================================
+        // 📚 LOAD COURSES
+        // ============================================================
         async function loadCourses() {
             try {
                 const user = auth.currentUser;
@@ -343,13 +370,10 @@
                     return;
                 }
 
-                const snapshot = await db.collection('bootcampCourses').get();
-
-                if (snapshot.empty) {
-                    await createDefaultCourses();
-                    await loadCourses();
-                    return;
-                }
+                // Fetch all published courses
+                const snapshot = await db.collection('bootcampCourses')
+                    .where('isPublished', '==', true)
+                    .get();
 
                 allCourses = [];
                 snapshot.forEach(doc => {
@@ -388,82 +412,9 @@
             }
         }
 
-        async function createDefaultCourses() {
-            const defaultCourses = [
-                { 
-                    title: "Mathematics WAEC Bootcamp", 
-                    subject: "Mathematics", 
-                    examType: "WAEC", 
-                    duration: "4 weeks", 
-                    price: 15000, 
-                    icon: "📐", 
-                    lessons: 12, 
-                    popular: true, 
-                    description: "4-week intensive course covering all WAEC math topics: Algebra, Calculus, Statistics, and Geometry." 
-                },
-                { 
-                    title: "English WAEC Bootcamp", 
-                    subject: "English", 
-                    examType: "WAEC", 
-                    duration: "4 weeks", 
-                    price: 15000, 
-                    icon: "📖", 
-                    lessons: 10, 
-                    popular: false, 
-                    description: "4-week course focusing on comprehension, essay writing, grammar, and literature." 
-                },
-                { 
-                    title: "JAMB Prep - Physics", 
-                    subject: "Physics", 
-                    examType: "JAMB", 
-                    duration: "6 weeks", 
-                    price: 20000, 
-                    icon: "⚡", 
-                    lessons: 15, 
-                    popular: true, 
-                    description: "6-week intensive course covering mechanics, electricity, waves, and modern physics." 
-                },
-                { 
-                    title: "NECO Prep - Chemistry", 
-                    subject: "Chemistry", 
-                    examType: "NECO", 
-                    duration: "5 weeks", 
-                    price: 18000, 
-                    icon: "🧪", 
-                    lessons: 12, 
-                    popular: false, 
-                    description: "5-week course on organic, inorganic, and physical chemistry." 
-                },
-                { 
-                    title: "BECE Mathematics", 
-                    subject: "Mathematics", 
-                    examType: "BECE", 
-                    duration: "4 weeks", 
-                    price: 12000, 
-                    icon: "📐", 
-                    lessons: 8, 
-                    popular: false, 
-                    description: "4-week BECE math course for JSS students." 
-                },
-                { 
-                    title: "JAMB Prep - English", 
-                    subject: "English", 
-                    examType: "JAMB", 
-                    duration: "5 weeks", 
-                    price: 18000, 
-                    icon: "📖", 
-                    lessons: 12, 
-                    popular: true, 
-                    description: "5-week course covering JAMB English: comprehension, grammar, and essay writing." 
-                }
-            ];
-
-            for (const course of defaultCourses) {
-                await db.collection('bootcampCourses').add(course);
-            }
-            showToast('📚 Default courses created!', 'success');
-        }
-
+        // ============================================================
+        // 🖌️ RENDER COURSES
+        // ============================================================
         function renderCourses(courses) {
             const container = document.getElementById('coursesList');
 
@@ -472,6 +423,7 @@
                     <div class="empty-state">
                         <span class="icon">📭</span>
                         <p>No bootcamp courses available yet</p>
+                        <p style="font-size:0.8rem;margin-top:0.3rem;">Check back later or contact your tutor.</p>
                     </div>
                 `;
                 return;
@@ -484,6 +436,8 @@
                 const isPopular = course.popular;
                 const price = course.price || 15000;
                 const examType = course.examType || 'General';
+                const totalLessons = course.lessons?.length || 0;
+                const completedLessons = course.lessonsCompleted || 0;
 
                 let badgeHtml = '';
                 if (isPopular) badgeHtml += `<span class="badge popular">⭐ Popular</span>`;
@@ -504,16 +458,19 @@
                                     <span>📝 ${examType}</span>
                                     <span>📚 ${course.subject || 'General'}</span>
                                     <span>⏱️ ${course.duration || '4 weeks'}</span>
-                                    <span>📖 ${course.lessons || 0} lessons</span>
+                                    <span>📖 ${totalLessons} lessons</span>
                                 </div>
                                 <div class="course-meta" style="font-size:0.8rem;color:#666;margin-top:0.2rem;">
+                                    👨‍🏫 ${course.tutorName || 'Unknown Tutor'}
+                                </div>
+                                <div class="course-meta" style="font-size:0.85rem;color:#444;margin-top:0.3rem;line-height:1.5;">
                                     ${course.description || 'Course description'}
                                 </div>
                                 ${isEnrolled ? `
                                     <div class="course-progress" style="margin-top:0.5rem;">
                                         <div class="flex-between">
                                             <span class="progress-text">📊 ${progress}% complete</span>
-                                            <span class="progress-text">${progress === 100 ? '🎉 Done!' : `${Math.floor(progress / 10)}/${course.lessons || 10} lessons`}</span>
+                                            <span class="progress-text">${progress === 100 ? '🎉 Done!' : `${completedLessons}/${totalLessons} lessons`}</span>
                                         </div>
                                         <div class="progress-bar"><div class="fill" style="width:${progress}%"></div></div>
                                     </div>
@@ -524,8 +481,8 @@
 
                         <div class="course-actions">
                             ${isEnrolled ? `
-                                <button class="btn-success" onclick="window.location.href='bootcamp-lesson.html?course=${course.id}'">
-                                    ▶️ Continue Learning
+                                <button class="btn-success" onclick="window.location.href='bootcamp-course.html?id=${course.id}'">
+                                    ▶️ ${progress === 100 ? 'View Course' : 'Continue Learning'}
                                 </button>
                                 ${progress === 100 ? `<button class="btn-outline" onclick="showCertificate('${course.id}')">🏆 Get Certificate</button>` : ''}
                             ` : `
@@ -534,7 +491,7 @@
                                 </button>
                                 <span style="font-size:0.7rem;color:#999;align-self:center;">Parent pays for this</span>
                             `}
-                            <button class="btn-outline" onclick="viewCourse('${course.id}')">👁️ Details</button>
+                            <button class="btn-details" onclick="window.location.href='bootcamp-course.html?id=${course.id}'">👁️ Details</button>
                         </div>
                     </div>
                 `;
@@ -542,6 +499,9 @@
             container.innerHTML = html;
         }
 
+        // ============================================================
+        // 💳 ENROLL COURSE
+        // ============================================================
         async function enrollCourse(courseId, courseTitle, price) {
             if (!confirm(`This will request payment from your parent.\n\nCourse: ${courseTitle}\nPrice: ₦${price.toLocaleString()}\n\nClick OK to notify your parent.`)) return;
 
@@ -591,7 +551,6 @@
                     createdAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
 
-                // Show a message about waiting for parent approval
                 showToast('💡 Your parent will see this on their dashboard.', 'info');
 
             } catch (error) {
@@ -600,33 +559,18 @@
             }
         }
 
-        function viewCourse(courseId) {
-            const course = allCourses.find(c => c.id === courseId);
-            if (!course) {
-                showToast('Course not found', 'error');
-                return;
-            }
-
-            const isEnrolled = enrolledCourses.has(courseId);
-            const progress = course.progress || 0;
-
-            showToast(
-                `📚 ${course.title}\n` +
-                `📝 ${course.examType || 'General'}\n` +
-                `📖 ${course.lessons || 0} lessons\n` +
-                `⏱️ ${course.duration || '4 weeks'}\n` +
-                `💰 ₦${(course.price || 15000).toLocaleString()}\n` +
-                `${isEnrolled ? `📊 ${progress}% complete` : '🔓 Not enrolled yet'}`,
-                'info'
-            );
-        }
-
+        // ============================================================
+        // 🏆 CERTIFICATE
+        // ============================================================
         function showCertificate(courseId) {
             const course = allCourses.find(c => c.id === courseId);
             if (!course) return;
             showToast(`🏆 Certificate for "${course.title}"!\n\n🎉 Congratulations on completing the course!`, 'success');
         }
 
+        // ============================================================
+        // 🔍 FILTER
+        // ============================================================
         document.querySelector('.filter-section').addEventListener('click', function(e) {
             if (e.target.classList.contains('filter-btn')) {
                 document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
@@ -645,6 +589,9 @@
             }
         });
 
+        // ============================================================
+        // 🚀 INIT
+        // ============================================================
         auth.onAuthStateChanged(user => {
             if (!user) {
                 document.getElementById('loadingScreen').classList.add('hidden');
@@ -657,6 +604,7 @@
         console.log('📚 Holiday Bootcamp loaded!');
         console.log('💳 Parent pays for courses - student requests enrollment');
         console.log('🇳🇬 Built for Nigerian students - WAEC, NECO, BECE, JAMB');
+        console.log('🔗 Links to bootcamp-course.html and bootcamp-lesson.html');
     </script>
 
 </body>
