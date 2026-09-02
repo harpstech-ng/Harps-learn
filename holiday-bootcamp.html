@@ -224,6 +224,16 @@
         .empty-state { text-align: center; padding: 2rem; color: #999; }
         .empty-state .icon { font-size: 3rem; display: block; margin-bottom: 0.5rem; }
 
+        .info-box {
+            background: #f0f4ff;
+            border: 1px solid #dbeafe;
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        .info-box h4 { color: #1a1a2e; margin-bottom: 0.3rem; }
+        .info-box p { color: #666; font-size: 0.85rem; }
+
         @media (max-width: 600px) {
             .navbar { padding: 0.4rem 0.8rem; }
             .navbar .logo { font-size: 1.1rem; }
@@ -253,6 +263,16 @@
             <div class="page-header">
                 <h1>📚 Holiday Bootcamp</h1>
                 <p>4-6 week intensive courses for WAEC/NECO/JAMB exams. 🇳🇬</p>
+            </div>
+
+            <div class="info-box">
+                <h4>💡 How It Works</h4>
+                <p>
+                    📚 Parents pay for the course, you get access to all lessons.<br>
+                    🎓 Complete lessons at your own pace during the holidays.<br>
+                    🏆 Get a certificate when you finish the course.<br>
+                    📊 Your parent can track your progress on their dashboard.
+                </p>
             </div>
 
             <div class="filter-section">
@@ -346,6 +366,12 @@
                     const data = doc.data();
                     if (data.courseId) {
                         enrolledCourses.add(data.courseId);
+                        // Update progress if available
+                        const course = allCourses.find(c => c.id === data.courseId);
+                        if (course) {
+                            course.progress = data.progress || 0;
+                            course.lessonsCompleted = data.lessonsCompleted || 0;
+                        }
                     }
                 });
 
@@ -364,10 +390,72 @@
 
         async function createDefaultCourses() {
             const defaultCourses = [
-                { title: "Mathematics WAEC Bootcamp", subject: "Mathematics", examType: "WAEC", duration: "4 weeks", price: 15000, icon: "📐", lessons: 12, popular: true, description: "4-week intensive course covering all WAEC math topics: Algebra, Calculus, Statistics, and Geometry." },
-                { title: "English WAEC Bootcamp", subject: "English", examType: "WAEC", duration: "4 weeks", price: 15000, icon: "📖", lessons: 10, popular: false, description: "4-week course focusing on comprehension, essay writing, grammar, and literature." },
-                { title: "JAMB Prep - Physics", subject: "Physics", examType: "JAMB", duration: "6 weeks", price: 20000, icon: "⚡", lessons: 15, popular: true, description: "6-week intensive course covering mechanics, electricity, waves, and modern physics." },
-                { title: "NECO Prep - Chemistry", subject: "Chemistry", examType: "NECO", duration: "5 weeks", price: 18000, icon: "🧪", lessons: 12, popular: false, description: "5-week course on organic, inorganic, and physical chemistry." }
+                { 
+                    title: "Mathematics WAEC Bootcamp", 
+                    subject: "Mathematics", 
+                    examType: "WAEC", 
+                    duration: "4 weeks", 
+                    price: 15000, 
+                    icon: "📐", 
+                    lessons: 12, 
+                    popular: true, 
+                    description: "4-week intensive course covering all WAEC math topics: Algebra, Calculus, Statistics, and Geometry." 
+                },
+                { 
+                    title: "English WAEC Bootcamp", 
+                    subject: "English", 
+                    examType: "WAEC", 
+                    duration: "4 weeks", 
+                    price: 15000, 
+                    icon: "📖", 
+                    lessons: 10, 
+                    popular: false, 
+                    description: "4-week course focusing on comprehension, essay writing, grammar, and literature." 
+                },
+                { 
+                    title: "JAMB Prep - Physics", 
+                    subject: "Physics", 
+                    examType: "JAMB", 
+                    duration: "6 weeks", 
+                    price: 20000, 
+                    icon: "⚡", 
+                    lessons: 15, 
+                    popular: true, 
+                    description: "6-week intensive course covering mechanics, electricity, waves, and modern physics." 
+                },
+                { 
+                    title: "NECO Prep - Chemistry", 
+                    subject: "Chemistry", 
+                    examType: "NECO", 
+                    duration: "5 weeks", 
+                    price: 18000, 
+                    icon: "🧪", 
+                    lessons: 12, 
+                    popular: false, 
+                    description: "5-week course on organic, inorganic, and physical chemistry." 
+                },
+                { 
+                    title: "BECE Mathematics", 
+                    subject: "Mathematics", 
+                    examType: "BECE", 
+                    duration: "4 weeks", 
+                    price: 12000, 
+                    icon: "📐", 
+                    lessons: 8, 
+                    popular: false, 
+                    description: "4-week BECE math course for JSS students." 
+                },
+                { 
+                    title: "JAMB Prep - English", 
+                    subject: "English", 
+                    examType: "JAMB", 
+                    duration: "5 weeks", 
+                    price: 18000, 
+                    icon: "📖", 
+                    lessons: 12, 
+                    popular: true, 
+                    description: "5-week course covering JAMB English: comprehension, grammar, and essay writing." 
+                }
             ];
 
             for (const course of defaultCourses) {
@@ -404,7 +492,7 @@
                 else badgeHtml += `<span class="badge price">₦${price.toLocaleString()}</span>`;
 
                 html += `
-                    <div class="course-card" onclick="viewCourse('${course.id}')">
+                    <div class="course-card">
                         <div class="course-header">
                             <div>
                                 <div class="course-icon">${course.icon || '📚'}</div>
@@ -421,31 +509,32 @@
                                 <div class="course-meta" style="font-size:0.8rem;color:#666;margin-top:0.2rem;">
                                     ${course.description || 'Course description'}
                                 </div>
+                                ${isEnrolled ? `
+                                    <div class="course-progress" style="margin-top:0.5rem;">
+                                        <div class="flex-between">
+                                            <span class="progress-text">📊 ${progress}% complete</span>
+                                            <span class="progress-text">${progress === 100 ? '🎉 Done!' : `${Math.floor(progress / 10)}/${course.lessons || 10} lessons`}</span>
+                                        </div>
+                                        <div class="progress-bar"><div class="fill" style="width:${progress}%"></div></div>
+                                    </div>
+                                ` : ''}
                             </div>
                             <div>${badgeHtml}</div>
                         </div>
 
-                        ${isEnrolled ? `
-                            <div class="course-progress">
-                                <div class="flex-between">
-                                    <span class="progress-text">📊 ${progress}% complete</span>
-                                    <span class="progress-text">${progress === 100 ? '🎉 Done!' : `${Math.floor(progress / 10)}/${course.lessons || 10} lessons`}</span>
-                                </div>
-                                <div class="progress-bar"><div class="fill" style="width:${progress}%"></div></div>
-                            </div>
-                        ` : ''}
-
                         <div class="course-actions">
                             ${isEnrolled ? `
-                                <button class="btn-success" onclick="event.stopPropagation(); window.location.href='bootcamp-lesson.html?course=${course.id}&lesson=${course.lessonId || 'sample'}'">
+                                <button class="btn-success" onclick="window.location.href='bootcamp-lesson.html?course=${course.id}'">
                                     ▶️ Continue Learning
                                 </button>
+                                ${progress === 100 ? `<button class="btn-outline" onclick="showCertificate('${course.id}')">🏆 Get Certificate</button>` : ''}
                             ` : `
-                                <button class="btn-primary" onclick="event.stopPropagation(); enrollCourse('${course.id}', '${course.title}', ${price})">
+                                <button class="btn-primary" onclick="enrollCourse('${course.id}', '${course.title}', ${price})">
                                     💳 Enroll Now - ₦${price.toLocaleString()}
                                 </button>
+                                <span style="font-size:0.7rem;color:#999;align-self:center;">Parent pays for this</span>
                             `}
-                            <button class="btn-outline" onclick="event.stopPropagation(); viewCourse('${course.id}')">👁️ View Details</button>
+                            <button class="btn-outline" onclick="viewCourse('${course.id}')">👁️ Details</button>
                         </div>
                     </div>
                 `;
@@ -454,7 +543,7 @@
         }
 
         async function enrollCourse(courseId, courseTitle, price) {
-            if (!confirm(`Enroll in "${courseTitle}" for ₦${price.toLocaleString()}?`)) return;
+            if (!confirm(`This will request payment from your parent.\n\nCourse: ${courseTitle}\nPrice: ₦${price.toLocaleString()}\n\nClick OK to notify your parent.`)) return;
 
             try {
                 const user = auth.currentUser;
@@ -465,27 +554,49 @@
                     return;
                 }
 
-                showToast('💳 Processing payment...', 'warning');
+                // Check if student has a parent linked
+                const studentDoc = await db.collection('students').doc(user.uid).get();
+                const studentData = studentDoc.data();
 
-                setTimeout(async () => {
-                    await db.collection('studentProgress').add({
-                        studentId: user.uid,
-                        courseId: courseId,
-                        progress: 0,
-                        lessonsCompleted: 0,
-                        enrolledAt: firebase.firestore.FieldValue.serverTimestamp(),
-                        lastAccessed: firebase.firestore.FieldValue.serverTimestamp()
-                    });
+                if (!studentData || !studentData.parentId) {
+                    showToast('⚠️ No parent linked. Please ask your parent to link with you first.', 'warning');
+                    return;
+                }
 
-                    enrolledCourses.add(courseId);
-                    showToast('✅ Successfully enrolled in ' + courseTitle + '! 🎉', 'success');
-                    await loadCourses();
+                // Send notification to PARENT requesting payment
+                await db.collection('notifications').add({
+                    userId: studentData.parentId,
+                    title: '📚 Bootcamp Enrollment Request',
+                    message: `Your child wants to enroll in "${courseTitle}" for ₦${price.toLocaleString()}. Please approve the payment.`,
+                    type: 'bootcamp_enrollment',
+                    studentId: user.uid,
+                    courseId: courseId,
+                    courseTitle: courseTitle,
+                    price: price,
+                    status: 'pending',
+                    read: false,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
 
-                }, 2000);
+                showToast('✅ Request sent to your parent! They will approve the payment.', 'success');
+
+                // Also create a pending enrollment request
+                await db.collection('bootcampEnrollments').add({
+                    studentId: user.uid,
+                    parentId: studentData.parentId,
+                    courseId: courseId,
+                    courseTitle: courseTitle,
+                    price: price,
+                    status: 'pending',
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                // Show a message about waiting for parent approval
+                showToast('💡 Your parent will see this on their dashboard.', 'info');
 
             } catch (error) {
                 console.error('Error enrolling:', error);
-                showToast('Error enrolling: ' + error.message, 'error');
+                showToast('Error: ' + error.message, 'error');
             }
         }
 
@@ -508,6 +619,12 @@
                 `${isEnrolled ? `📊 ${progress}% complete` : '🔓 Not enrolled yet'}`,
                 'info'
             );
+        }
+
+        function showCertificate(courseId) {
+            const course = allCourses.find(c => c.id === courseId);
+            if (!course) return;
+            showToast(`🏆 Certificate for "${course.title}"!\n\n🎉 Congratulations on completing the course!`, 'success');
         }
 
         document.querySelector('.filter-section').addEventListener('click', function(e) {
@@ -538,6 +655,7 @@
         });
 
         console.log('📚 Holiday Bootcamp loaded!');
+        console.log('💳 Parent pays for courses - student requests enrollment');
         console.log('🇳🇬 Built for Nigerian students - WAEC, NECO, BECE, JAMB');
     </script>
 
