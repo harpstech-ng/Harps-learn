@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Study Groups - HarpsLearn</title>
 
+    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
@@ -15,6 +16,7 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: #f0f2f5;
             min-height: 100vh;
+            overflow-x: hidden;
         }
 
         .navbar {
@@ -129,10 +131,10 @@
             color: white;
         }
         .group-card .group-actions .btn-chat {
-            background: #f0f2f5;
-            color: #666;
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
         }
-        .group-card .group-actions .btn-chat:hover { background: #e5e7eb; }
+        .group-card .group-actions .btn-chat:hover { transform: scale(1.05); }
 
         .badge {
             display: inline-block;
@@ -209,6 +211,12 @@
         .modal .modal-actions button { flex: 1; padding: 10px; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; }
         .modal .modal-actions .btn-primary { background: linear-gradient(135deg, #667eea, #764ba2); color: white; }
         .modal .modal-actions .btn-secondary { background: #f0f2f5; color: #666; }
+
+        .group-card .group-creator {
+            font-size: 0.7rem;
+            color: #999;
+            margin-top: 0.2rem;
+        }
 
         @media (max-width: 600px) {
             .navbar { padding: 0.4rem 0.8rem; }
@@ -312,6 +320,8 @@
 
         let allGroups = [];
         let userGroups = new Set();
+        let currentUser = null;
+        let userRole = '';
 
         function showToast(message, type = 'info') {
             const existing = document.querySelector('.toast');
@@ -327,6 +337,13 @@
             try {
                 const user = auth.currentUser;
                 if (!user) { window.location.href = 'index.html'; return; }
+                currentUser = user;
+
+                // Get user role
+                const userDoc = await db.collection('users').doc(user.uid).get();
+                if (userDoc.exists) {
+                    userRole = userDoc.data().role || 'student';
+                }
 
                 const snapshot = await db.collection('studyGroups')
                     .orderBy('createdAt', 'desc')
@@ -342,6 +359,7 @@
                     .where('userId', '==', user.uid)
                     .get();
 
+                userGroups = new Set();
                 joinedSnapshot.forEach(doc => {
                     userGroups.add(doc.data().groupId);
                 });
@@ -376,7 +394,7 @@
                 const status = isFull ? 'full' : 'active';
 
                 html += `
-                    <div class="group-card">
+                    <div class="group-card" onclick="window.location.href='study-group-room.html?id=${group.id}'">
                         <div class="group-header">
                             <div>
                                 <div class="group-name">${group.name}</div>
@@ -391,14 +409,15 @@
                             <span>📚 ${group.exam || 'General'}</span>
                             ${group.school ? `<span>🏫 ${group.school}</span>` : ''}
                         </div>
+                        <div class="group-creator">👤 Created by ${group.creatorName || 'Anonymous'}</div>
                         <div class="group-actions">
                             ${isJoined ? `
-                                <button class="btn-joined">✅ Joined</button>
-                                <button class="btn-chat" onclick="openChat('${group.id}')">💬 Chat</button>
+                                <button class="btn-joined" onclick="event.stopPropagation();">✅ Joined</button>
+                                <button class="btn-chat" onclick="event.stopPropagation(); window.location.href='study-group-room.html?id=${group.id}'">💬 Open Room</button>
                             ` : `
-                                ${!isFull ? `<button class="btn-join" onclick="joinGroup('${group.id}')">➕ Join Group</button>` : ''}
+                                ${!isFull ? `<button class="btn-join" onclick="event.stopPropagation(); joinGroup('${group.id}')">➕ Join Group</button>` : ''}
                             `}
-                            <button class="btn-chat" onclick="viewGroup('${group.id}')">👁️ View</button>
+                            <button class="btn-chat" onclick="event.stopPropagation(); window.location.href='study-group-room.html?id=${group.id}'" style="background:#667eea;color:white;">👁️ View</button>
                         </div>
                     </div>
                 `;
@@ -425,6 +444,19 @@
                     return;
                 }
 
+                // Check if already a member
+                const existing = await db.collection('groupMembers')
+                    .where('userId', '==', user.uid)
+                    .where('groupId', '==', groupId)
+                    .get();
+
+                if (!existing.empty) {
+                    userGroups.add(groupId);
+                    showToast('✅ You are already a member!', 'success');
+                    await loadGroups();
+                    return;
+                }
+
                 await groupRef.update({
                     members: memberCount + 1
                 });
@@ -432,24 +464,36 @@
                 await db.collection('groupMembers').add({
                     userId: user.uid,
                     groupId: groupId,
+                    role: userRole || 'student',
                     joinedAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
 
+                // Add join notification
+                const userDoc = await db.collection('users').doc(user.uid).get();
+                const userName = userDoc.exists ? userDoc.data().fullName || 'Someone' : 'Someone';
+
+                await db.collection('groupMessages').add({
+                    groupId: groupId,
+                    userId: user.uid,
+                    userName: userName,
+                    userRole: userRole || 'student',
+                    type: 'join',
+                    message: `${userName} joined the group! 🎉`,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
                 userGroups.add(groupId);
-                showToast('✅ Joined study group!', 'success');
+                showToast('✅ Joined study group! 🎉', 'success');
                 await loadGroups();
+
+                // Redirect to group room
+                setTimeout(() => {
+                    window.location.href = `study-group-room.html?id=${groupId}`;
+                }, 800);
 
             } catch (error) {
                 showToast('Error: ' + error.message, 'error');
             }
-        }
-
-        function openChat(groupId) {
-            showToast('💬 Chat feature coming soon!', 'warning');
-        }
-
-        function viewGroup(groupId) {
-            showToast('👁️ Group details coming soon!', 'warning');
         }
 
         function openCreateGroup() {
@@ -484,7 +528,28 @@
             btn.textContent = 'Creating...';
 
             try {
-                await db.collection('studyGroups').add({
+                // CHECK FOR DUPLICATE GROUP - PREVENT MULTIPLE CREATION
+                const existing = await db.collection('studyGroups')
+                    .where('name', '==', name)
+                    .where('subject', '==', subject)
+                    .where('exam', '==', exam)
+                    .get();
+
+                if (!existing.empty) {
+                    showToast('⚠️ A group with this name, subject, and exam already exists!', 'warning');
+                    btn.disabled = false;
+                    btn.textContent = 'Create Group';
+                    return;
+                }
+
+                // Get user role
+                const userDoc = await db.collection('users').doc(user.uid).get();
+                const userData = userDoc.exists ? userDoc.data() : {};
+                const userName = userData.fullName || user.email || 'Anonymous';
+                const userRole = userData.role || 'student';
+
+                // Create group
+                const groupRef = await db.collection('studyGroups').add({
                     name: name,
                     subject: subject,
                     exam: exam,
@@ -492,33 +557,41 @@
                     maxMembers: maxMembers,
                     members: 1,
                     creatorId: user.uid,
-                    creatorName: user.displayName || 'Anonymous',
+                    creatorName: userName,
+                    creatorRole: userRole,
                     createdAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
 
-                // Auto-join the creator
-                const newGroupSnapshot = await db.collection('studyGroups')
-                    .where('creatorId', '==', user.uid)
-                    .orderBy('createdAt', 'desc')
-                    .limit(1)
-                    .get();
+                const groupId = groupRef.id;
 
-                let groupId = '';
-                newGroupSnapshot.forEach(doc => { groupId = doc.id; });
+                // Auto-join creator
+                await db.collection('groupMembers').add({
+                    userId: user.uid,
+                    groupId: groupId,
+                    role: userRole,
+                    joinedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
 
-                if (groupId) {
-                    await db.collection('groupMembers').add({
-                        userId: user.uid,
-                        groupId: groupId,
-                        joinedAt: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-                    userGroups.add(groupId);
-                }
+                // Add welcome message
+                await db.collection('groupMessages').add({
+                    groupId: groupId,
+                    userId: user.uid,
+                    userName: userName,
+                    userRole: userRole,
+                    type: 'system',
+                    message: `🎉 Welcome to "${name}"! This is your study group. ${userName} created this group.`,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
 
-                showToast('✅ Study group created!', 'success');
+                userGroups.add(groupId);
+                showToast('✅ Study group created! 🎉', 'success');
                 closeCreateGroup();
                 this.reset();
-                await loadGroups();
+
+                // Redirect to group room
+                setTimeout(() => {
+                    window.location.href = `study-group-room.html?id=${groupId}`;
+                }, 800);
 
             } catch (error) {
                 showToast('Error: ' + error.message, 'error');
