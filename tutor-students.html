@@ -56,6 +56,22 @@
         .page-header h1 { font-size: 1.5rem; color: #1a1a2e; }
         .page-header p { color: #666; font-size: 0.9rem; margin-top: 0.2rem; }
 
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.6rem;
+            margin-bottom: 1rem;
+        }
+        .stats-row .stat-box {
+            background: white;
+            border-radius: 12px;
+            padding: 0.8rem;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+        .stats-row .stat-box .number { font-size: 1.5rem; font-weight: 700; color: #667eea; }
+        .stats-row .stat-box .label { font-size: 0.7rem; color: #666; }
+
         .student-card {
             background: white;
             border-radius: 14px;
@@ -80,8 +96,10 @@
             font-weight: 700;
             font-size: 1.2rem;
             flex-shrink: 0;
+            overflow: hidden;
         }
-        .student-card .info { flex: 1; }
+        .student-card .avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .student-card .info { flex: 1; min-width: 0; }
         .student-card .info .name { font-weight: 700; color: #1a1a2e; font-size: 0.95rem; }
         .student-card .info .details { font-size: 0.8rem; color: #666; }
         .student-card .info .progress-text { font-size: 0.75rem; color: #667eea; font-weight: 600; }
@@ -108,6 +126,7 @@
         }
         .student-card .badge.active { background: #dcfce7; color: #166534; }
         .student-card .badge.inactive { background: #fee2e2; color: #991b1b; }
+        .student-card .badge.completed { background: #dbeafe; color: #1e40af; }
 
         .search-box {
             width: 100%;
@@ -117,8 +136,9 @@
             font-size: 0.95rem;
             margin-bottom: 1rem;
             font-family: inherit;
+            transition: all 0.3s ease;
         }
-        .search-box:focus { outline: none; border-color: #667eea; }
+        .search-box:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102,126,234,0.1); }
 
         .text-muted { color: #666; font-size: 0.85rem; }
         .flex-between { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; }
@@ -145,11 +165,19 @@
         .toast.warning { background: #f59e0b; }
         @keyframes toastSlide { from { transform: translateX(-50%) translateY(100px); opacity: 0; } to { transform: translateX(-50%) translateY(0); opacity: 1; } }
 
+        .empty-state {
+            text-align: center;
+            padding: 2rem;
+            color: #999;
+        }
+        .empty-state .icon { font-size: 3rem; display: block; margin-bottom: 0.5rem; }
+
         @media (max-width: 600px) {
             .navbar { padding: 0.4rem 0.8rem; }
             .navbar .logo { font-size: 1.1rem; }
             .container { padding: 0.4rem; }
             .student-card { padding: 0.8rem; flex-wrap: wrap; }
+            .stats-row { grid-template-columns: 1fr 1fr; }
         }
     </style>
 </head>
@@ -163,10 +191,26 @@
     <div class="container">
         <div class="page-header">
             <h1>👨‍🎓 My Students</h1>
-            <p>View and manage all your students.</p>
+            <p>View all students enrolled in your courses and track their progress.</p>
         </div>
 
-        <input type="text" class="search-box" id="searchInput" placeholder="🔍 Search students..." oninput="filterStudents()" />
+        <!-- Stats -->
+        <div class="stats-row" id="statsRow">
+            <div class="stat-box">
+                <div class="number" id="totalStudents">0</div>
+                <div class="label">👨‍🎓 Total Students</div>
+            </div>
+            <div class="stat-box">
+                <div class="number" id="activeStudents">0</div>
+                <div class="label">🟢 Active</div>
+            </div>
+            <div class="stat-box">
+                <div class="number" id="avgProgress">0%</div>
+                <div class="label">📊 Avg Progress</div>
+            </div>
+        </div>
+
+        <input type="text" class="search-box" id="searchInput" placeholder="🔍 Search students by name or course..." oninput="filterStudents()" />
 
         <div id="studentsList">
             <div style="text-align:center;padding:2rem;color:#999;">
@@ -192,6 +236,7 @@
         const db = firebase.firestore();
 
         let allStudents = [];
+        let currentUser = null;
 
         function showToast(message, type = 'info') {
             const existing = document.querySelector('.toast');
@@ -203,48 +248,149 @@
             setTimeout(() => { toast.remove(); }, 4000);
         }
 
+        function timeAgo(date) {
+            if (!date) return 'N/A';
+            const seconds = Math.floor((new Date() - date) / 1000);
+            if (seconds < 60) return 'just now';
+            const minutes = Math.floor(seconds / 60);
+            if (minutes < 60) return minutes + 'm ago';
+            const hours = Math.floor(minutes / 60);
+            if (hours < 24) return hours + 'h ago';
+            const days = Math.floor(hours / 24);
+            if (days < 7) return days + 'd ago';
+            return date.toLocaleDateString();
+        }
+
+        function getInitials(name) {
+            if (!name) return '?';
+            return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+        }
+
         async function loadStudents() {
             try {
                 const user = auth.currentUser;
                 if (!user) { window.location.href = 'index.html'; return; }
+                currentUser = user;
 
-                // Get students from bookings
-                const snapshot = await db.collection('bookings')
+                // Step 1: Get all courses created by this tutor
+                const coursesSnapshot = await db.collection('bootcampCourses')
                     .where('tutorId', '==', user.uid)
                     .get();
 
-                const studentMap = {};
-                snapshot.forEach(doc => {
+                const courseIds = [];
+                const courseMap = {};
+                coursesSnapshot.forEach(doc => {
                     const data = doc.data();
-                    const studentId = data.studentId;
-                    if (studentId && !studentMap[studentId]) {
-                        studentMap[studentId] = {
-                            id: studentId,
-                            name: data.studentName || 'Student',
-                            subject: data.subject || 'General',
-                            progress: data.progress || Math.floor(Math.random() * 40) + 30,
-                            lastActive: data.date || '2025-02-15'
-                        };
+                    courseIds.push(doc.id);
+                    courseMap[doc.id] = {
+                        id: doc.id,
+                        title: data.title || 'Untitled',
+                        subject: data.subject || 'General',
+                        examType: data.examType || 'General'
+                    };
+                });
+
+                if (courseIds.length === 0) {
+                    renderStudents([]);
+                    updateStats([]);
+                    return;
+                }
+
+                // Step 2: Get all student progress for these courses
+                const progressSnapshots = await Promise.all(
+                    courseIds.map(courseId => 
+                        db.collection('studentProgress')
+                            .where('courseId', '==', courseId)
+                            .get()
+                    )
+                );
+
+                // Step 3: Build student data
+                const studentMap = new Map();
+
+                for (const snapshot of progressSnapshots) {
+                    snapshot.forEach(doc => {
+                        const data = doc.data();
+                        const studentId = data.studentId;
+                        const courseId = data.courseId;
+
+                        if (!studentId) return;
+
+                        if (!studentMap.has(studentId)) {
+                            studentMap.set(studentId, {
+                                id: studentId,
+                                name: 'Loading...',
+                                email: '',
+                                profilePic: '',
+                                courses: [],
+                                totalProgress: 0,
+                                lastActive: data.lastAccessed?.toDate?.() || null,
+                                enrolledAt: data.enrolledAt?.toDate?.() || null
+                            });
+                        }
+
+                        const student = studentMap.get(studentId);
+                        const courseInfo = courseMap[courseId] || { title: 'Unknown Course', subject: 'General' };
+                        student.courses.push({
+                            courseId: courseId,
+                            courseTitle: courseInfo.title,
+                            subject: courseInfo.subject,
+                            progress: data.progress || 0,
+                            lessonsCompleted: data.lessonsCompleted?.length || 0,
+                            totalLessons: data.totalLessons || 0,
+                            completedAt: data.completedAt?.toDate?.() || null,
+                            lastAccessed: data.lastAccessed?.toDate?.() || null
+                        });
+
+                        // Update last active if this is more recent
+                        const lastActive = data.lastAccessed?.toDate?.() || null;
+                        if (lastActive && (!student.lastActive || lastActive > student.lastActive)) {
+                            student.lastActive = lastActive;
+                        }
+
+                        // Calculate average progress
+                        let totalProgress = 0;
+                        student.courses.forEach(c => totalProgress += c.progress);
+                        student.totalProgress = Math.round(totalProgress / student.courses.length);
+                    });
+                }
+
+                // Step 4: Fetch user details for each student
+                const studentIds = Array.from(studentMap.keys());
+                const userDocs = await Promise.all(
+                    studentIds.map(id => db.collection('users').doc(id).get())
+                );
+
+                userDocs.forEach(doc => {
+                    if (doc.exists) {
+                        const data = doc.data();
+                        const student = studentMap.get(doc.id);
+                        if (student) {
+                            student.name = data.fullName || 'Student';
+                            student.email = data.email || '';
+                            student.profilePic = data.profilePic || '';
+                            student.role = data.role || 'student';
+                            student.examType = data.examType || 'General';
+                        }
                     }
                 });
 
-                allStudents = Object.values(studentMap);
-
-                if (allStudents.length === 0) {
-                    // Fallback data
-                    allStudents = [
-                        { id: '1', name: 'Chioma Okonkwo', subject: 'Mathematics', progress: 78, lastActive: '2025-02-15', active: true },
-                        { id: '2', name: 'David Eze', subject: 'English', progress: 45, lastActive: '2025-02-14', active: true },
-                        { id: '3', name: 'Adebayo Ogunlesi', subject: 'Physics', progress: 92, lastActive: '2025-02-12', active: true },
-                        { id: '4', name: 'Zainab Mohammed', subject: 'Chemistry', progress: 30, lastActive: '2025-02-10', active: false }
-                    ];
-                }
+                // Convert to array and sort by name
+                allStudents = Array.from(studentMap.values());
+                allStudents.sort((a, b) => a.name.localeCompare(b.name));
 
                 renderStudents(allStudents);
+                updateStats(allStudents);
 
             } catch (error) {
                 console.error('Error loading students:', error);
                 showToast('Error loading students', 'error');
+                document.getElementById('studentsList').innerHTML = `
+                    <div class="empty-state">
+                        <span class="icon">⚠️</span>
+                        <p>Error loading students. Please try again.</p>
+                    </div>
+                `;
             }
         }
 
@@ -253,29 +399,49 @@
 
             if (!students || students.length === 0) {
                 container.innerHTML = `
-                    <div class="text-muted" style="padding:2rem;text-align:center;">📭 No students yet</div>
+                    <div class="empty-state">
+                        <span class="icon">👨‍🎓</span>
+                        <p>You don't have any students yet.</p>
+                        <p style="font-size:0.8rem;margin-top:0.3rem;">Students will appear here once they enroll in your courses.</p>
+                    </div>
                 `;
                 return;
             }
 
             let html = '';
             for (const student of students) {
-                const initial = student.name.charAt(0).toUpperCase();
-                const progress = student.progress || 0;
-                const active = student.active !== false;
-                const activeClass = active ? 'active' : 'inactive';
-                const activeLabel = active ? '🟢 Active' : '🔴 Inactive';
+                const initial = getInitials(student.name);
+                const progress = student.totalProgress || 0;
+                
+                // Determine status
+                let statusClass = 'active';
+                let statusLabel = '🟢 Active';
+                if (progress === 100) {
+                    statusClass = 'completed';
+                    statusLabel = '✅ Completed';
+                } else if (!student.lastActive || (new Date() - student.lastActive) > 30 * 24 * 60 * 60 * 1000) {
+                    statusClass = 'inactive';
+                    statusLabel = '🔴 Inactive (30d+)';
+                }
+
+                const courseCount = student.courses.length;
+                const courseNames = student.courses.map(c => c.courseTitle).join(', ');
 
                 html += `
                     <div class="student-card" onclick="viewStudent('${student.id}')">
-                        <div class="avatar">${initial}</div>
+                        <div class="avatar">
+                            ${student.profilePic ? `<img src="${student.profilePic}" alt="${student.name}" />` : initial}
+                        </div>
                         <div class="info">
                             <div class="flex-between">
                                 <span class="name">${student.name}</span>
-                                <span class="badge ${activeClass}">${activeLabel}</span>
+                                <span class="badge ${statusClass}">${statusLabel}</span>
                             </div>
-                            <div class="details">📚 ${student.subject || 'General'} • Last active: ${student.lastActive || 'N/A'}</div>
-                            <div class="progress-text">📊 ${progress}% progress</div>
+                            <div class="details">
+                                📚 ${courseCount} course${courseCount > 1 ? 's' : ''}: ${courseNames.length > 40 ? courseNames.substring(0, 40) + '...' : courseNames}
+                                ${student.lastActive ? `• Last active: ${timeAgo(student.lastActive)}` : ''}
+                            </div>
+                            <div class="progress-text">📊 ${progress}% overall progress</div>
                             <div class="progress-bar"><div class="fill" style="width:${progress}%"></div></div>
                         </div>
                     </div>
@@ -284,17 +450,57 @@
             container.innerHTML = html;
         }
 
+        function updateStats(students) {
+            const total = students.length;
+            const active = students.filter(s => {
+                if (s.totalProgress === 100) return false; // completed
+                if (!s.lastActive) return false;
+                return (new Date() - s.lastActive) < 30 * 24 * 60 * 60 * 1000;
+            }).length;
+            
+            let avgProgress = 0;
+            students.forEach(s => avgProgress += s.totalProgress);
+            avgProgress = total > 0 ? Math.round(avgProgress / total) : 0;
+
+            document.getElementById('totalStudents').textContent = total;
+            document.getElementById('activeStudents').textContent = active;
+            document.getElementById('avgProgress').textContent = avgProgress + '%';
+        }
+
         function filterStudents() {
             const search = document.getElementById('searchInput').value.toLowerCase();
+            if (!search) {
+                renderStudents(allStudents);
+                return;
+            }
             const filtered = allStudents.filter(s => 
                 s.name.toLowerCase().includes(search) || 
-                (s.subject && s.subject.toLowerCase().includes(search))
+                s.courses.some(c => c.courseTitle.toLowerCase().includes(search)) ||
+                s.courses.some(c => c.subject.toLowerCase().includes(search))
             );
             renderStudents(filtered);
         }
 
         function viewStudent(studentId) {
-            showToast('👨‍🎓 Student profile coming soon!', 'warning');
+            // For now, show student info
+            const student = allStudents.find(s => s.id === studentId);
+            if (!student) {
+                showToast('Student not found', 'error');
+                return;
+            }
+
+            let courseList = student.courses.map(c => 
+                `• ${c.courseTitle}: ${c.progress}% (${c.lessonsCompleted}/${c.totalLessons} lessons)`
+            ).join('\n');
+
+            showToast(
+                `👨‍🎓 ${student.name}\n` +
+                `📧 ${student.email || 'No email'}\n` +
+                `📚 ${student.courses.length} courses\n` +
+                `📊 ${student.totalProgress}% overall progress\n\n` +
+                `${courseList}`,
+                'info'
+            );
         }
 
         auth.onAuthStateChanged(user => {
@@ -302,7 +508,7 @@
             else { loadStudents(); }
         });
 
-        console.log('👨‍🎓 Tutor Students loaded!');
+        console.log('👨‍🎓 Tutor Students - REAL DATA from Firestore!');
     </script>
 
 </body>
