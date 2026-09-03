@@ -161,7 +161,13 @@
         .input-group {
             margin-bottom: 1rem;
         }
-        .input-group label { display: block; font-weight: 600; margin-bottom: 0.3rem; color: #333; font-size: 0.9rem; }
+        .input-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.3rem;
+            color: #333;
+            font-size: 0.9rem;
+        }
         .input-group input, .input-group select, .input-group textarea {
             width: 100%;
             padding: 10px 14px;
@@ -175,6 +181,48 @@
             border-color: #667eea;
         }
         .input-group textarea { min-height: 80px; resize: vertical; }
+        .input-group .locked-badge {
+            display: inline-block;
+            background: #fef3c7;
+            color: #92400e;
+            font-size: 0.65rem;
+            padding: 2px 10px;
+            border-radius: 12px;
+            margin-left: 8px;
+            font-weight: 600;
+        }
+        .input-group .locked-field {
+            position: relative;
+        }
+        .input-group .locked-field input,
+        .input-group .locked-field select,
+        .input-group .locked-field textarea {
+            background: #f8f9fa;
+            cursor: not-allowed;
+            opacity: 0.7;
+            pointer-events: none;
+        }
+        .input-group .locked-field .lock-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255,255,255,0.6);
+            border-radius: 10px;
+            font-size: 0.8rem;
+            color: #666;
+            pointer-events: none;
+        }
+        .input-group .locked-field .lock-overlay span {
+            background: rgba(255,255,255,0.9);
+            padding: 2px 12px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
 
         .btn-primary {
             background: linear-gradient(135deg, #667eea, #764ba2);
@@ -189,6 +237,7 @@
             width: 100%;
         }
         .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(102,126,234,0.4); }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
         .text-muted { color: #666; font-size: 0.85rem; }
         .mt-1 { margin-top: 0.5rem; }
@@ -213,6 +262,39 @@
         .toast.error { background: #ef4444; }
         .toast.warning { background: #f59e0b; }
         @keyframes toastSlide { from { transform: translateX(-50%) translateY(100px); opacity: 0; } to { transform: translateX(-50%) translateY(0); opacity: 1; } }
+
+        .verification-badge {
+            display: inline-block;
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.8rem;
+        }
+        .verification-badge.approved { background: #dcfce7; color: #166534; }
+        .verification-badge.pending { background: #fef3c7; color: #92400e; }
+        .verification-badge.rejected { background: #fee2e2; color: #991b1b; }
+
+        .file-upload-btn {
+            display: inline-block;
+            padding: 8px 16px;
+            background: #f0f2f5;
+            border: 2px dashed #667eea;
+            border-radius: 10px;
+            cursor: pointer;
+            text-align: center;
+            color: #667eea;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+        .file-upload-btn:hover { background: #e8eaf6; }
+        .file-upload-btn.uploaded { background: #dcfce7; border-color: #22c55e; color: #166534; }
+        .file-name { font-size: 0.8rem; color: #666; margin-top: 0.2rem; text-align: center; }
+        .file-upload-btn.locked {
+            opacity: 0.5;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
 
         @media (max-width: 600px) {
             .navbar { padding: 0.4rem 0.8rem; }
@@ -245,6 +327,9 @@
                     <div class="name" id="settingsName">Loading...</div>
                     <div class="email" id="settingsEmail">loading@email.com</div>
                     <span class="role" id="settingsRole">Tutor</span>
+                    <div style="margin-top: 4px;">
+                        <span class="verification-badge pending" id="verificationBadge">⏳ Pending</span>
+                    </div>
                 </div>
                 <button class="change-photo-btn" onclick="uploadProfilePic()">📷 Change</button>
             </div>
@@ -268,34 +353,83 @@
             <button class="btn-primary" onclick="updateProfile()">💾 Update Profile</button>
         </div>
 
-        <!-- Qualifications -->
+        <!-- Qualifications (locked if verified) -->
         <div class="settings-section">
-            <div class="section-title">🎓 Qualifications</div>
+            <div class="section-title">🎓 Qualifications <span id="qualLockBadge"></span></div>
             <div class="input-group">
                 <label>Highest Degree</label>
-                <select id="editQualification">
-                    <option value="">Select qualification</option>
-                    <option value="bachelors">Bachelor's Degree</option>
-                    <option value="masters">Master's Degree</option>
-                    <option value="phd">PhD</option>
-                    <option value="nce">NCE</option>
-                    <option value="hnd">HND</option>
-                    <option value="ond">OND</option>
-                </select>
+                <div class="locked-field" id="qualificationField">
+                    <select id="editQualification">
+                        <option value="">Select qualification</option>
+                        <option value="bachelors">Bachelor's Degree</option>
+                        <option value="masters">Master's Degree</option>
+                        <option value="phd">PhD</option>
+                        <option value="nce">NCE</option>
+                        <option value="hnd">HND</option>
+                        <option value="ond">OND</option>
+                    </select>
+                </div>
             </div>
             <div class="input-group">
                 <label>Institution</label>
-                <input type="text" id="editInstitution" placeholder="University of Lagos" />
+                <div class="locked-field" id="institutionField">
+                    <input type="text" id="editInstitution" placeholder="University of Lagos" />
+                </div>
             </div>
             <div class="input-group">
                 <label>Subjects Taught</label>
-                <input type="text" id="editSubjects" placeholder="Mathematics, Physics, Chemistry" />
+                <div class="locked-field" id="subjectsField">
+                    <input type="text" id="editSubjects" placeholder="Mathematics, Physics, Chemistry" />
+                </div>
             </div>
             <div class="input-group">
                 <label>Hourly Rate (₦)</label>
-                <input type="number" id="editRate" placeholder="5000" min="1000" />
+                <div class="locked-field" id="rateField">
+                    <input type="number" id="editRate" placeholder="5000" min="1000" />
+                </div>
             </div>
-            <button class="btn-primary" onclick="updateQualifications()">💾 Update Qualifications</button>
+            <div id="qualificationSaveArea">
+                <button class="btn-primary" onclick="updateQualifications()">💾 Update Qualifications</button>
+            </div>
+        </div>
+
+        <!-- Documents (always locked) -->
+        <div class="settings-section">
+            <div class="section-title">📄 Verification Documents <span style="font-size:0.7rem;color:#f59e0b;">🔒 Locked</span></div>
+            <p class="text-muted" style="font-size:0.8rem;margin-bottom:0.8rem;">
+                These documents were submitted during verification and cannot be changed. Contact support if you need to update them.
+            </p>
+
+            <div class="input-group">
+                <label>Degree Certificate</label>
+                <div class="locked-field">
+                    <button class="file-upload-btn locked" id="degreeBtn" onclick="viewDocument('degree')">📄 View Uploaded File</button>
+                    <div class="file-name" id="degreeFileName">No file uploaded</div>
+                    <input type="hidden" id="degreeURL" value="" />
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label>Teaching License (Optional)</label>
+                <div class="locked-field">
+                    <button class="file-upload-btn locked" id="licenseBtn" onclick="viewDocument('license')">📄 View Uploaded File</button>
+                    <div class="file-name" id="licenseFileName">No file uploaded</div>
+                    <input type="hidden" id="licenseURL" value="" />
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label>ID Card (Optional)</label>
+                <div class="locked-field">
+                    <button class="file-upload-btn locked" id="idBtn" onclick="viewDocument('id')">📄 View Uploaded File</button>
+                    <div class="file-name" id="idFileName">No file uploaded</div>
+                    <input type="hidden" id="idURL" value="" />
+                </div>
+            </div>
+
+            <p class="text-muted" style="font-size:0.7rem;margin-top:0.5rem;">
+                🔒 These documents are locked because your account is verified.
+            </p>
         </div>
 
         <!-- Preferences -->
@@ -352,6 +486,7 @@
         let currentUser = null;
         let userData = null;
         let tutorData = null;
+        let isVerified = false;
 
         function showToast(message, type = 'info') {
             const existing = document.querySelector('.toast');
@@ -405,6 +540,21 @@
             widget.open();
         }
 
+        // View Document (opens in new tab)
+        function viewDocument(type) {
+            const urlMap = {
+                degree: document.getElementById('degreeURL').value,
+                license: document.getElementById('licenseURL').value,
+                id: document.getElementById('idURL').value
+            };
+            const url = urlMap[type];
+            if (url) {
+                window.open(url, '_blank');
+            } else {
+                showToast('No file uploaded for this document.', 'warning');
+            }
+        }
+
         async function loadSettings() {
             try {
                 const user = auth.currentUser;
@@ -444,7 +594,27 @@
                     document.getElementById('editInstitution').value = tutorData.institution || '';
                     document.getElementById('editSubjects').value = Array.isArray(tutorData.subjects) ? tutorData.subjects.join(', ') : '';
                     document.getElementById('editRate').value = tutorData.hourlyRate || '';
+
+                    // Documents
+                    document.getElementById('degreeURL').value = tutorData.degreeURL || '';
+                    document.getElementById('licenseURL').value = tutorData.licenseURL || '';
+                    document.getElementById('idURL').value = tutorData.idURL || '';
+
+                    document.getElementById('degreeFileName').textContent = tutorData.degreeURL ? '✅ Uploaded' : 'No file uploaded';
+                    document.getElementById('licenseFileName').textContent = tutorData.licenseURL ? '✅ Uploaded' : 'No file uploaded';
+                    document.getElementById('idFileName').textContent = tutorData.idURL ? '✅ Uploaded' : 'No file uploaded';
+
+                    // Verification status
+                    const status = tutorData.verificationStatus || 'pending';
+                    const badge = document.getElementById('verificationBadge');
+                    badge.textContent = status === 'approved' ? '✅ Verified' : status === 'pending' ? '⏳ Pending' : '❌ Rejected';
+                    badge.className = `verification-badge ${status}`;
+
+                    isVerified = status === 'approved';
                 }
+
+                // Apply locking based on verification
+                applyLockState();
 
                 // Preferences
                 if (userData.preferences) {
@@ -455,6 +625,46 @@
             } catch (error) {
                 console.error('Error loading settings:', error);
                 showToast('Error loading settings', 'error');
+            }
+        }
+
+        function applyLockState() {
+            const lockedFields = ['qualificationField', 'institutionField', 'subjectsField', 'rateField'];
+            const saveArea = document.getElementById('qualificationSaveArea');
+            const lockBadge = document.getElementById('qualLockBadge');
+
+            if (isVerified) {
+                // Lock qualification fields
+                lockedFields.forEach(id => {
+                    const container = document.getElementById(id);
+                    if (container) {
+                        container.classList.add('locked-field');
+                        // Remove any existing overlay to avoid duplicates
+                        const existingOverlay = container.querySelector('.lock-overlay');
+                        if (!existingOverlay) {
+                            const overlay = document.createElement('div');
+                            overlay.className = 'lock-overlay';
+                            overlay.innerHTML = '<span>🔒 Locked (verified)</span>';
+                            container.appendChild(overlay);
+                        }
+                    }
+                });
+                // Hide save button
+                if (saveArea) saveArea.style.display = 'none';
+                // Show badge
+                if (lockBadge) lockBadge.innerHTML = '<span class="locked-badge">🔒 Locked</span>';
+            } else {
+                // Unlock fields
+                lockedFields.forEach(id => {
+                    const container = document.getElementById(id);
+                    if (container) {
+                        container.classList.remove('locked-field');
+                        const overlay = container.querySelector('.lock-overlay');
+                        if (overlay) overlay.remove();
+                    }
+                });
+                if (saveArea) saveArea.style.display = 'block';
+                if (lockBadge) lockBadge.innerHTML = '';
             }
         }
 
@@ -479,6 +689,11 @@
         }
 
         function updateQualifications() {
+            if (isVerified) {
+                showToast('⚠️ Qualifications are locked because you are verified.', 'warning');
+                return;
+            }
+
             const qualification = document.getElementById('editQualification').value;
             const institution = document.getElementById('editInstitution').value.trim();
             const subjects = document.getElementById('editSubjects').value.split(',').map(s => s.trim()).filter(s => s);
@@ -551,6 +766,7 @@
         });
 
         console.log('⚙️ Tutor Settings loaded!');
+        console.log('🔒 Document fields locked if verified.');
     </script>
 
 </body>
