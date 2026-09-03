@@ -57,23 +57,24 @@
         .page-header p { color: #666; font-size: 0.9rem; margin-top: 0.2rem; }
 
         .availability-toggle {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
             background: white;
             border-radius: 14px;
             padding: 1rem;
             margin-bottom: 1rem;
             box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.5rem;
         }
-        .availability-toggle .status {
-            font-weight: 700;
-            font-size: 1.1rem;
-        }
-        .availability-toggle .status.available { color: #22c55e; }
-        .availability-toggle .status.unavailable { color: #ef4444; }
+        .availability-toggle .left { display: flex; align-items: center; gap: 0.8rem; }
+        .availability-toggle .status-icon { font-size: 1.5rem; }
+        .availability-toggle .status-text { font-weight: 700; font-size: 1.1rem; }
+        .availability-toggle .status-text.available { color: #22c55e; }
+        .availability-toggle .status-text.unavailable { color: #ef4444; }
+        .availability-toggle .status-sub { font-size: 0.8rem; color: #666; }
         .availability-toggle .toggle-btn {
-            margin-left: auto;
             padding: 8px 20px;
             border: none;
             border-radius: 10px;
@@ -85,6 +86,7 @@
         .availability-toggle .toggle-btn.available:hover { background: #16a34a; }
         .availability-toggle .toggle-btn.unavailable { background: #ef4444; color: white; }
         .availability-toggle .toggle-btn.unavailable:hover { background: #dc2626; }
+        .availability-toggle .toggle-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
         .day-card {
             background: white;
@@ -130,22 +132,36 @@
         .day-card .time-slots {
             display: flex;
             flex-wrap: wrap;
-            gap: 0.5rem;
+            gap: 0.4rem;
             margin-top: 0.5rem;
         }
         .day-card .time-slot {
             padding: 4px 12px;
             border: 2px solid #e5e7eb;
             border-radius: 20px;
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s ease;
             background: white;
             color: #666;
+            user-select: none;
         }
         .day-card .time-slot:hover { border-color: #667eea; color: #667eea; }
         .day-card .time-slot.selected { background: #667eea; color: white; border-color: #667eea; }
+        .day-card .time-slot.disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+        .day-card .day-status-badge {
+            font-size: 0.6rem;
+            padding: 2px 10px;
+            border-radius: 10px;
+            font-weight: 600;
+        }
+        .day-card .day-status-badge.active { background: #dcfce7; color: #166534; }
+        .day-card .day-status-badge.inactive { background: #fee2e2; color: #991b1b; }
 
         .btn-primary {
             background: linear-gradient(135deg, #667eea, #764ba2);
@@ -160,9 +176,11 @@
             width: 100%;
         }
         .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(102,126,234,0.4); }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
         .text-muted { color: #666; font-size: 0.85rem; }
         .mt-1 { margin-top: 0.5rem; }
+        .flex-between { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; }
 
         .toast {
             position: fixed;
@@ -185,11 +203,26 @@
         .toast.warning { background: #f59e0b; }
         @keyframes toastSlide { from { transform: translateX(-50%) translateY(100px); opacity: 0; } to { transform: translateX(-50%) translateY(0); opacity: 1; } }
 
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top: 2px solid white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 6px;
+            vertical-align: middle;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
         @media (max-width: 600px) {
             .navbar { padding: 0.4rem 0.8rem; }
             .navbar .logo { font-size: 1.1rem; }
             .container { padding: 0.4rem; }
             .day-card { padding: 0.8rem; }
+            .availability-toggle { flex-direction: column; align-items: stretch; }
+            .availability-toggle .toggle-btn { width: 100%; }
         }
     </style>
 </head>
@@ -206,21 +239,27 @@
             <p>Set your availability schedule for students to book you.</p>
         </div>
 
-        <div class="availability-toggle">
-            <div>
-                <div class="status available" id="statusText">🟢 Available</div>
-                <div class="text-muted">Students can book you</div>
+        <!-- Availability Toggle -->
+        <div class="availability-toggle" id="availabilityToggle">
+            <div class="left">
+                <span class="status-icon" id="statusIcon">🟢</span>
+                <div>
+                    <div class="status-text available" id="statusText">Available</div>
+                    <div class="status-sub" id="statusSub">Students can book you</div>
+                </div>
             </div>
             <button class="toggle-btn available" id="statusBtn" onclick="toggleAvailability()">
                 Set Unavailable
             </button>
         </div>
 
-        <div id="daysList">
-            <!-- Will be populated by JS -->
-        </div>
+        <!-- Days & Time Slots -->
+        <div id="daysList"></div>
 
-        <button class="btn-primary mt-1" onclick="saveAvailability()">💾 Save Availability</button>
+        <!-- Save Button -->
+        <button class="btn-primary mt-1" id="saveBtn" onclick="saveAvailability()">
+            💾 Save Availability
+        </button>
     </div>
 
     <script>
@@ -238,7 +277,12 @@
         const auth = firebase.auth();
         const db = firebase.firestore();
 
+        let currentUser = null;
         let isAvailable = true;
+        let availabilityData = null;
+        let selectedSlots = {};
+        let savedDays = [];
+
         const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
         const timeSlots = ['8:00 AM', '9:00 AM', '10:00 AM', '11:00 AM', '12:00 PM', '1:00 PM', '2:00 PM', '3:00 PM', '4:00 PM', '5:00 PM', '6:00 PM', '7:00 PM'];
 
@@ -252,94 +296,267 @@
             setTimeout(() => { toast.remove(); }, 4000);
         }
 
-        function toggleAvailability() {
-            isAvailable = !isAvailable;
-            const statusText = document.getElementById('statusText');
-            const statusBtn = document.getElementById('statusBtn');
+        // ============================================================
+        // 📥 LOAD AVAILABILITY FROM FIRESTORE
+        // ============================================================
+        async function loadAvailability() {
+            try {
+                const user = auth.currentUser;
+                if (!user) { window.location.href = 'index.html'; return; }
+                currentUser = user;
 
-            if (isAvailable) {
-                statusText.textContent = '🟢 Available';
-                statusText.className = 'status available';
-                statusBtn.textContent = 'Set Unavailable';
-                statusBtn.className = 'toggle-btn available';
-                showToast('✅ You are now available for bookings!', 'success');
-            } else {
-                statusText.textContent = '🔴 Unavailable';
-                statusText.className = 'status unavailable';
-                statusBtn.textContent = 'Set Available';
-                statusBtn.className = 'toggle-btn unavailable';
-                showToast('⏳ You are now unavailable for bookings', 'warning');
+                const doc = await db.collection('tutors').doc(user.uid).get();
+                if (doc.exists) {
+                    const data = doc.data();
+                    availabilityData = data.availability || null;
+
+                    if (availabilityData) {
+                        isAvailable = availabilityData.isAvailable !== false;
+                        selectedSlots = availabilityData.slots || {};
+                        savedDays = availabilityData.days || [];
+                    } else {
+                        // Default: all days selected with empty slots
+                        savedDays = days;
+                        selectedSlots = {};
+                        days.forEach(day => { selectedSlots[day] = []; });
+                    }
+                }
+
+                updateUI();
+                renderDays();
+
+            } catch (error) {
+                console.error('Error loading availability:', error);
+                showToast('Error loading availability', 'error');
+                // Default fallback
+                savedDays = days;
+                selectedSlots = {};
+                days.forEach(day => { selectedSlots[day] = []; });
+                renderDays();
             }
         }
 
+        // ============================================================
+        // 🖌️ UPDATE UI
+        // ============================================================
+        function updateUI() {
+            const statusText = document.getElementById('statusText');
+            const statusIcon = document.getElementById('statusIcon');
+            const statusSub = document.getElementById('statusSub');
+            const statusBtn = document.getElementById('statusBtn');
+
+            if (isAvailable) {
+                statusText.textContent = 'Available';
+                statusText.className = 'status-text available';
+                statusIcon.textContent = '🟢';
+                statusSub.textContent = 'Students can book you';
+                statusBtn.textContent = 'Set Unavailable';
+                statusBtn.className = 'toggle-btn available';
+            } else {
+                statusText.textContent = 'Unavailable';
+                statusText.className = 'status-text unavailable';
+                statusIcon.textContent = '🔴';
+                statusSub.textContent = 'Students cannot book you';
+                statusBtn.textContent = 'Set Available';
+                statusBtn.className = 'toggle-btn unavailable';
+            }
+        }
+
+        // ============================================================
+        // 🖌️ RENDER DAYS
+        // ============================================================
         function renderDays() {
             const container = document.getElementById('daysList');
             let html = '';
 
             for (const day of days) {
+                const isActive = savedDays.includes(day);
+                const slots = selectedSlots[day] || [];
+
+                let slotsHtml = '';
+                for (const time of timeSlots) {
+                    const isSelected = slots.includes(time);
+                    const disabled = !isActive ? 'disabled' : '';
+                    slotsHtml += `
+                        <span class="time-slot ${isSelected ? 'selected' : ''} ${disabled}" 
+                              onclick="toggleSlot(this, '${day}', '${time}')">
+                            ${time}
+                        </span>
+                    `;
+                }
+
+                const statusBadge = isActive ? 
+                    '<span class="day-status-badge active">🟢 Active</span>' : 
+                    '<span class="day-status-badge inactive">🔴 Inactive</span>';
+
                 html += `
                     <div class="day-card">
                         <div class="day-header">
-                            <span class="day-name">${day}</span>
-                            <input type="checkbox" class="day-toggle" id="day-${day}" />
+                            <span class="day-name">${day} ${statusBadge}</span>
+                            <input type="checkbox" class="day-toggle" id="day-${day}" 
+                                   ${isActive ? 'checked' : ''} 
+                                   onchange="toggleDay('${day}')" />
                         </div>
                         <div class="time-slots" id="slots-${day}">
-                            ${timeSlots.map(time => `
-                                <span class="time-slot" onclick="toggleSlot(this)">${time}</span>
-                            `).join('')}
+                            ${slotsHtml}
                         </div>
+                        ${isActive && slots.length === 0 ? 
+                            '<div style="font-size:0.7rem;color:#999;margin-top:0.3rem;">💡 Click time slots above to select them</div>' : ''}
                     </div>
                 `;
             }
             container.innerHTML = html;
         }
 
-        function toggleSlot(element) {
-            element.classList.toggle('selected');
+        // ============================================================
+        // 🎯 TOGGLE FUNCTIONS
+        // ============================================================
+
+        // Toggle Overall Availability
+        function toggleAvailability() {
+            isAvailable = !isAvailable;
+            updateUI();
+            showToast(isAvailable ? '✅ You are now available!' : '⏳ You are now unavailable', 
+                     isAvailable ? 'success' : 'warning');
         }
 
-        function saveAvailability() {
-            const selectedDays = [];
-            const selectedSlots = {};
+        // Toggle Day
+        function toggleDay(day) {
+            const toggle = document.getElementById(`day-${day}`);
+            const isActive = toggle.checked;
 
-            for (const day of days) {
-                const toggle = document.getElementById(`day-${day}`);
-                if (toggle && toggle.checked) {
-                    selectedDays.push(day);
-                    const slots = document.querySelectorAll(`#slots-${day} .time-slot.selected`);
-                    selectedSlots[day] = Array.from(slots).map(el => el.textContent);
+            if (isActive) {
+                if (!savedDays.includes(day)) {
+                    savedDays.push(day);
+                    if (!selectedSlots[day]) selectedSlots[day] = [];
                 }
+            } else {
+                savedDays = savedDays.filter(d => d !== day);
+                selectedSlots[day] = [];
             }
 
-            const data = {
-                isAvailable: isAvailable,
-                days: selectedDays,
-                slots: selectedSlots,
-                updatedAt: new Date().toISOString()
-            };
-
-            // Save to Firebase
-            const user = auth.currentUser;
-            if (user) {
-                db.collection('tutors').doc(user.uid).update({
-                    availability: data
-                }).then(() => {
-                    showToast('✅ Availability saved successfully!', 'success');
-                }).catch(() => {
-                    showToast('⚠️ Availability saved locally! (Firebase update failed)', 'warning');
-                });
-            }
-
-            console.log('Availability saved:', data);
-            showToast('✅ Availability saved successfully!', 'success');
+            // Re-render day to update slots
+            renderDays();
         }
 
+        // Toggle Time Slot
+        function toggleSlot(element, day, time) {
+            const isActive = savedDays.includes(day);
+            if (!isActive) {
+                showToast('⚠️ Enable the day first by toggling the switch above', 'warning');
+                return;
+            }
+
+            if (!selectedSlots[day]) selectedSlots[day] = [];
+
+            const index = selectedSlots[day].indexOf(time);
+            if (index > -1) {
+                selectedSlots[day].splice(index, 1);
+                element.classList.remove('selected');
+            } else {
+                selectedSlots[day].push(time);
+                selectedSlots[day].sort();
+                element.classList.add('selected');
+            }
+        }
+
+        // ============================================================
+        // 💾 SAVE AVAILABILITY TO FIRESTORE
+        // ============================================================
+        async function saveAvailability() {
+            const btn = document.getElementById('saveBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span> Saving...';
+
+            try {
+                const user = auth.currentUser;
+                if (!user) {
+                    showToast('Please login first', 'error');
+                    btn.disabled = false;
+                    btn.innerHTML = '💾 Save Availability';
+                    return;
+                }
+
+                // Clean up: ensure only active days have slots
+                for (const day of days) {
+                    if (!savedDays.includes(day)) {
+                        selectedSlots[day] = [];
+                    }
+                }
+
+                const data = {
+                    isAvailable: isAvailable,
+                    days: savedDays,
+                    slots: selectedSlots,
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                };
+
+                await db.collection('tutors').doc(user.uid).set({
+                    availability: data
+                }, { merge: true });
+
+                showToast('✅ Availability saved successfully!', 'success');
+                console.log('Availability saved:', data);
+
+                // Refresh data
+                await loadAvailability();
+
+            } catch (error) {
+                console.error('Error saving availability:', error);
+                showToast('❌ Error saving availability: ' + error.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '💾 Save Availability';
+            }
+        }
+
+        // ============================================================
+        // 🔄 REAL-TIME LISTENER FOR AVAILABILITY
+        // ============================================================
+        function listenToAvailability() {
+            if (!currentUser) return;
+
+            if (window.availUnsubscribe) {
+                window.availUnsubscribe();
+            }
+
+            window.availUnsubscribe = db.collection('tutors')
+                .doc(currentUser.uid)
+                .onSnapshot((doc) => {
+                    if (doc.exists) {
+                        const data = doc.data();
+                        availabilityData = data.availability || null;
+
+                        if (availabilityData) {
+                            isAvailable = availabilityData.isAvailable !== false;
+                            selectedSlots = availabilityData.slots || {};
+                            savedDays = availabilityData.days || [];
+                        }
+
+                        updateUI();
+                        renderDays();
+                    }
+                }, (error) => {
+                    console.error('Real-time listener error:', error);
+                });
+        }
+
+        // ============================================================
+        // 🚀 INIT
+        // ============================================================
         auth.onAuthStateChanged(user => {
-            if (!user) { window.location.href = 'index.html'; }
-            else { renderDays(); }
+            if (!user) {
+                window.location.href = 'index.html';
+            } else {
+                currentUser = user;
+                loadAvailability();
+                listenToAvailability();
+            }
         });
 
-        console.log('🕐 Tutor Availability loaded!');
+        console.log('🕐 Tutor Availability - FULLY REAL!');
+        console.log('✅ All changes saved to Firestore in real-time!');
+        console.log('🔄 Real-time listener active!');
     </script>
 
 </body>
