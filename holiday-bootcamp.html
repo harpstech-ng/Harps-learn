@@ -188,6 +188,11 @@
             color: #666;
         }
         .course-card .course-actions .btn-details:hover { background: #e5e7eb; }
+        .course-card .course-actions .btn-pending {
+            background: #fef3c7;
+            color: #92400e;
+            cursor: not-allowed;
+        }
 
         .badge {
             display: inline-block;
@@ -200,11 +205,23 @@
         .badge.completed { background: #dcfce7; color: #166534; }
         .badge.in-progress { background: #fef3c7; color: #92400e; }
         .badge.price { background: #dcfce7; color: #166534; }
+        .badge.pending { background: #fef3c7; color: #92400e; }
+        .badge.enrolled { background: #22c55e; color: white; }
 
         .enrolled-badge {
             display: inline-block;
             background: #22c55e;
             color: white;
+            padding: 2px 12px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            margin-left: 4px;
+        }
+        .pending-badge {
+            display: inline-block;
+            background: #fef3c7;
+            color: #92400e;
             padding: 2px 12px;
             border-radius: 12px;
             font-size: 0.7rem;
@@ -299,6 +316,7 @@
                 <button class="filter-btn" data-filter="bece">📝 BECE</button>
                 <button class="filter-btn" data-filter="kcse">📝 KCSE</button>
                 <button class="filter-btn" data-filter="enrolled">✅ Enrolled</button>
+                <button class="filter-btn" data-filter="pending">⏳ Pending</button>
             </div>
 
             <!-- ===== COURSES LIST ===== -->
@@ -331,6 +349,7 @@
 
         let allCourses = [];
         let enrolledCourses = new Set();
+        let pendingEnrollments = new Set();
         let currentUser = null;
 
         // ============================================================
@@ -380,7 +399,7 @@
                     allCourses.push({ id: doc.id, ...doc.data() });
                 });
 
-                // Get enrolled courses
+                // Get enrolled courses (approved by parent)
                 const enrolledSnapshot = await db.collection('studentProgress')
                     .where('studentId', '==', user.uid)
                     .get();
@@ -390,11 +409,29 @@
                     const data = doc.data();
                     if (data.courseId) {
                         enrolledCourses.add(data.courseId);
-                        // Update progress if available
                         const course = allCourses.find(c => c.id === data.courseId);
                         if (course) {
                             course.progress = data.progress || 0;
                             course.lessonsCompleted = data.lessonsCompleted || 0;
+                            course.enrollmentStatus = 'approved';
+                        }
+                    }
+                });
+
+                // Get pending enrollments (waiting for parent approval)
+                const pendingSnapshot = await db.collection('bootcampEnrollments')
+                    .where('studentId', '==', user.uid)
+                    .where('status', '==', 'pending')
+                    .get();
+
+                pendingEnrollments = new Set();
+                pendingSnapshot.forEach(doc => {
+                    const data = doc.data();
+                    if (data.courseId) {
+                        pendingEnrollments.add(data.courseId);
+                        const course = allCourses.find(c => c.id === data.courseId);
+                        if (course) {
+                            course.enrollmentStatus = 'pending';
                         }
                     }
                 });
@@ -432,6 +469,7 @@
             let html = '';
             for (const course of courses) {
                 const isEnrolled = enrolledCourses.has(course.id);
+                const isPending = pendingEnrollments.has(course.id);
                 const progress = course.progress || 0;
                 const isPopular = course.popular;
                 const price = course.price || 15000;
@@ -443,7 +481,13 @@
                 if (isPopular) badgeHtml += `<span class="badge popular">⭐ Popular</span>`;
                 if (isEnrolled && progress === 100) badgeHtml += `<span class="badge completed">✅ Completed</span>`;
                 else if (isEnrolled && progress > 0) badgeHtml += `<span class="badge in-progress">⏳ In Progress</span>`;
+                else if (isEnrolled) badgeHtml += `<span class="badge enrolled">✅ Enrolled</span>`;
+                else if (isPending) badgeHtml += `<span class="badge pending">⏳ Pending</span>`;
                 else badgeHtml += `<span class="badge price">₦${price.toLocaleString()}</span>`;
+
+                let statusBadge = '';
+                if (isPending) statusBadge = `<span class="pending-badge">⏳ Awaiting Parent Approval</span>`;
+                else if (isEnrolled) statusBadge = `<span class="enrolled-badge">✅ Enrolled</span>`;
 
                 html += `
                     <div class="course-card">
@@ -452,7 +496,7 @@
                                 <div class="course-icon">${course.icon || '📚'}</div>
                                 <div class="course-name">
                                     ${course.title}
-                                    ${isEnrolled ? '<span class="enrolled-badge">✅ Enrolled</span>' : ''}
+                                    ${statusBadge}
                                 </div>
                                 <div class="course-meta">
                                     <span>📝 ${examType}</span>
@@ -475,6 +519,11 @@
                                         <div class="progress-bar"><div class="fill" style="width:${progress}%"></div></div>
                                     </div>
                                 ` : ''}
+                                ${isPending ? `
+                                    <div style="margin-top:0.5rem;background:#fef3c7;padding:0.4rem 0.8rem;border-radius:8px;font-size:0.8rem;color:#92400e;">
+                                        ⏳ Waiting for parent approval. You'll get access once they approve.
+                                    </div>
+                                ` : ''}
                             </div>
                             <div>${badgeHtml}</div>
                         </div>
@@ -485,6 +534,9 @@
                                     ▶️ ${progress === 100 ? 'View Course' : 'Continue Learning'}
                                 </button>
                                 ${progress === 100 ? `<button class="btn-outline" onclick="showCertificate('${course.id}')">🏆 Get Certificate</button>` : ''}
+                            ` : isPending ? `
+                                <button class="btn-pending" disabled>⏳ Pending Approval</button>
+                                <button class="btn-details" onclick="window.location.href='bootcamp-course.html?id=${course.id}'">👁️ Details</button>
                             ` : `
                                 <button class="btn-primary" onclick="enrollCourse('${course.id}', '${course.title}', ${price})">
                                     💳 Enroll Now - ₦${price.toLocaleString()}
@@ -500,7 +552,7 @@
         }
 
         // ============================================================
-        // 💳 ENROLL COURSE
+        // 💳 ENROLL COURSE - FIXED: Creates studentProgress immediately
         // ============================================================
         async function enrollCourse(courseId, courseTitle, price) {
             if (!confirm(`This will request payment from your parent.\n\nCourse: ${courseTitle}\nPrice: ₦${price.toLocaleString()}\n\nClick OK to notify your parent.`)) return;
@@ -514,6 +566,11 @@
                     return;
                 }
 
+                if (pendingEnrollments.has(courseId)) {
+                    showToast('⏳ Already pending parent approval!', 'warning');
+                    return;
+                }
+
                 // Check if student has a parent linked
                 const studentDoc = await db.collection('students').doc(user.uid).get();
                 const studentData = studentDoc.data();
@@ -522,6 +579,24 @@
                     showToast('⚠️ No parent linked. Please ask your parent to link with you first.', 'warning');
                     return;
                 }
+
+                // ============================================================
+                // 🆕 FIX: Create studentProgress immediately (so it shows in dashboard)
+                // ============================================================
+                await db.collection('studentProgress').add({
+                    studentId: user.uid,
+                    courseId: courseId,
+                    courseTitle: courseTitle,
+                    progress: 0,
+                    lessonsCompleted: [],
+                    totalLessons: 0,
+                    enrolledAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    lastAccessed: firebase.firestore.FieldValue.serverTimestamp(),
+                    enrollmentStatus: 'pending' // pending, approved, completed
+                });
+
+                // Add to enrolled set so UI updates
+                enrolledCourses.add(courseId);
 
                 // Send notification to PARENT requesting payment
                 await db.collection('notifications').add({
@@ -538,8 +613,6 @@
                     createdAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
 
-                showToast('✅ Request sent to your parent! They will approve the payment.', 'success');
-
                 // Also create a pending enrollment request
                 await db.collection('bootcampEnrollments').add({
                     studentId: user.uid,
@@ -551,7 +624,11 @@
                     createdAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
 
-                showToast('💡 Your parent will see this on their dashboard.', 'info');
+                showToast('✅ Enrollment request sent to your parent!', 'success');
+                showToast('💡 You can now see this course in your dashboard (pending approval)', 'info');
+
+                // Reload courses to update UI
+                await loadCourses();
 
             } catch (error) {
                 console.error('Error enrolling:', error);
@@ -581,6 +658,8 @@
 
                 if (filter === 'enrolled') {
                     filtered = allCourses.filter(c => enrolledCourses.has(c.id));
+                } else if (filter === 'pending') {
+                    filtered = allCourses.filter(c => pendingEnrollments.has(c.id));
                 } else if (filter !== 'all') {
                     filtered = allCourses.filter(c => (c.examType || '').toLowerCase() === filter);
                 }
@@ -601,10 +680,10 @@
             }
         });
 
-        console.log('📚 Holiday Bootcamp loaded!');
+        console.log('📚 Holiday Bootcamp - FIXED!');
+        console.log('✅ studentProgress created immediately on enrollment.');
         console.log('💳 Parent pays for courses - student requests enrollment');
         console.log('🇳🇬 Built for Nigerian students - WAEC, NECO, BECE, JAMB');
-        console.log('🔗 Links to bootcamp-course.html and bootcamp-lesson.html');
     </script>
 
 </body>
