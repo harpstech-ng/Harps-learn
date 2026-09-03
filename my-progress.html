@@ -78,25 +78,47 @@
             padding: 1rem;
             margin-bottom: 0.8rem;
             box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            border-left: 4px solid #667eea;
+            transition: all 0.3s ease;
         }
-        .progress-item .subject-name { font-weight: 600; color: #1a1a2e; font-size: 1rem; }
+        .progress-item:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.1); }
+        .progress-item .subject-name { font-weight: 700; color: #1a1a2e; font-size: 1rem; }
         .progress-item .subject-meta { color: #666; font-size: 0.8rem; margin: 0.2rem 0; }
         .progress-item .progress-bar { width: 100%; height: 8px; background: #e5e7eb; border-radius: 4px; overflow: hidden; margin: 0.4rem 0; }
-        .progress-item .progress-bar .fill { height: 100%; background: linear-gradient(90deg, #667eea, #764ba2); border-radius: 4px; transition: width 0.5s ease; }
+        .progress-item .progress-bar .fill { height: 100%; border-radius: 4px; transition: width 0.5s ease; }
         .progress-item .progress-stats {
             display: flex;
-            gap: 1rem;
-            font-size: 0.8rem;
+            gap: 0.6rem;
+            font-size: 0.75rem;
             color: #666;
             flex-wrap: wrap;
+            margin-top: 0.3rem;
         }
         .progress-item .progress-stats span { background: #f0f2f5; padding: 2px 10px; border-radius: 10px; }
+        .progress-item .tutor-mark {
+            font-size: 0.75rem;
+            color: #667eea;
+            font-weight: 600;
+            margin-top: 0.2rem;
+        }
 
         .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 0.65rem; font-weight: 600; }
         .badge.excellent { background: #dcfce7; color: #166534; }
         .badge.good { background: #dbeafe; color: #1e40af; }
         .badge.average { background: #fef3c7; color: #92400e; }
         .badge.poor { background: #fee2e2; color: #991b1b; }
+        .badge.pending { background: #fef3c7; color: #92400e; }
+
+        .status-badge {
+            font-size: 0.7rem;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-weight: 600;
+            display: inline-block;
+        }
+        .status-badge.enrolled { background: #dcfce7; color: #166534; }
+        .status-badge.pending { background: #fef3c7; color: #92400e; }
+        .status-badge.completed { background: #dbeafe; color: #1e40af; }
 
         .toast {
             position: fixed;
@@ -122,11 +144,30 @@
         .text-muted { color: #666; font-size: 0.85rem; }
         .flex-between { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; }
 
+        .empty-state {
+            text-align: center;
+            padding: 2rem;
+            color: #999;
+        }
+        .empty-state .icon { font-size: 3rem; display: block; margin-bottom: 0.5rem; }
+
+        .spinner {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
         @media (max-width: 600px) {
             .navbar { padding: 0.4rem 0.8rem; }
             .navbar .logo { font-size: 1.1rem; }
             .container { padding: 0.4rem; }
             .stats-grid { grid-template-columns: 1fr 1fr; }
+            .progress-item .progress-stats { gap: 0.3rem; }
         }
     </style>
 </head>
@@ -149,28 +190,32 @@
                 <div class="label">📚 Courses</div>
             </div>
             <div class="stat-card">
-                <div class="number" id="totalHours">0</div>
-                <div class="label">⏱️ Hours</div>
+                <div class="number" id="totalLessons">0</div>
+                <div class="label">📝 Lessons Done</div>
             </div>
             <div class="stat-card">
                 <div class="number" id="avgScore">0%</div>
                 <div class="label">🎯 Avg Score</div>
             </div>
             <div class="stat-card">
-                <div class="number" id="streakCount">0🔥</div>
-                <div class="label">Day Streak</div>
+                <div class="number" id="certificates">0</div>
+                <div class="label">🏆 Certificates</div>
             </div>
         </div>
 
         <div id="progressList">
-            <div style="text-align:center;padding:2rem;color:#999;">
-                <span style="font-size:2rem;display:block;margin-bottom:0.5rem;">📊</span>
-                Loading progress...
+            <div class="empty-state">
+                <span class="icon">📊</span>
+                <div class="spinner"></div>
+                <p style="margin-top:0.5rem;">Loading your progress...</p>
             </div>
         </div>
     </div>
 
     <script>
+        // ============================================================
+        // 🔥 FIREBASE CONFIG
+        // ============================================================
         const firebaseConfig = {
             apiKey: "AIzaSyDy-j3_iZwv7IE7HYHircFeEWGdoGizf5M",
             authDomain: "harpslearn.firebaseapp.com",
@@ -185,6 +230,8 @@
         const auth = firebase.auth();
         const db = firebase.firestore();
 
+        let currentUser = null;
+
         function showToast(message, type = 'info') {
             const existing = document.querySelector('.toast');
             if (existing) existing.remove();
@@ -195,124 +242,269 @@
             setTimeout(() => { toast.remove(); }, 4000);
         }
 
+        // ============================================================
+        // 📥 LOAD REAL PROGRESS - FIXED!
+        // ============================================================
         async function loadProgress() {
             try {
                 const user = auth.currentUser;
                 if (!user) { window.location.href = 'index.html'; return; }
+                currentUser = user;
 
-                // Get all courses
-                const courseSnapshot = await db.collection('courses')
+                // ============================================================
+                // Step 1: Get studentProgress records (enrolled courses)
+                // ============================================================
+                const progressSnapshot = await db.collection('studentProgress')
                     .where('studentId', '==', user.uid)
                     .get();
 
-                const courses = [];
-                let totalHours = 0;
+                if (progressSnapshot.empty) {
+                    document.getElementById('progressList').innerHTML = `
+                        <div class="empty-state">
+                            <span class="icon">📭</span>
+                            <p>No courses enrolled yet.</p>
+                            <p style="font-size:0.8rem;">Start learning by enrolling in a course!</p>
+                        </div>
+                    `;
+                    updateStats([], 0);
+                    return;
+                }
+
+                // ============================================================
+                // Step 2: Build progress data from studentProgress
+                // ============================================================
+                const progressData = [];
+                let totalLessonsCompleted = 0;
                 let totalScore = 0;
-                let totalProgress = 0;
+                let totalCertificates = 0;
 
-                courseSnapshot.forEach(doc => {
-                    const data = doc.data();
-                    courses.push({ id: doc.id, ...data });
-                    totalHours += data.hoursSpent || 0;
-                    totalProgress += data.progress || 0;
-                    if (data.averageScore) totalScore += data.averageScore;
-                });
+                for (const doc of progressSnapshot.docs) {
+                    const prog = doc.data();
+                    const courseId = prog.courseId;
 
-                const courseCount = courses.length || 0;
-                const avgProgress = courseCount > 0 ? Math.round(totalProgress / courseCount) : 0;
-                const avgScore = courseCount > 0 ? Math.round(totalScore / courseCount) : 0;
+                    // Get course details from bootcampCourses
+                    let course = {};
+                    if (courseId) {
+                        try {
+                            const courseDoc = await db.collection('bootcampCourses').doc(courseId).get();
+                            if (courseDoc.exists) {
+                                course = courseDoc.data();
+                            }
+                        } catch (err) {
+                            console.warn('Could not fetch course:', courseId, err);
+                        }
+                    }
 
-                document.getElementById('totalCourses').textContent = courseCount;
-                document.getElementById('totalHours').textContent = totalHours || 0;
-                document.getElementById('avgScore').textContent = avgScore > 0 ? `${avgScore}%` : '0%';
+                    const progress = prog.progress || 0;
+                    const lessonsCompleted = prog.lessonsCompleted?.length || 0;
+                    const totalLessons = course?.totalLessons || 0;
+                    const avgScore = prog.averageScore || 0;
+                    const tutorMark = prog.overallTutorRating || 0;
+                    const status = prog.enrollmentStatus || 'approved';
+                    const courseTitle = course?.title || prog.courseTitle || 'Course';
+                    const courseIcon = course?.icon || '📚';
+                    const examType = course?.examType || 'General';
 
-                // Get streak from progress collection
-                const progressSnapshot = await db.collection('progress')
+                    progressData.push({
+                        id: doc.id,
+                        courseId: courseId,
+                        title: courseTitle,
+                        icon: courseIcon,
+                        examType: examType,
+                        totalLessons: totalLessons || 0,
+                        progress: progress,
+                        lessonsCompleted: lessonsCompleted,
+                        avgScore: avgScore,
+                        tutorMark: tutorMark,
+                        status: status,
+                        enrolledAt: prog.enrolledAt?.toDate?.() || new Date()
+                    });
+
+                    totalLessonsCompleted += lessonsCompleted;
+                    totalScore += avgScore;
+                    if (progress === 100) totalCertificates++;
+                }
+
+                // ============================================================
+                // Step 3: Get tutor feedback for each course
+                // ============================================================
+                const feedbackSnapshot = await db.collection('tutorFeedback')
                     .where('studentId', '==', user.uid)
-                    .orderBy('date', 'desc')
-                    .limit(30)
                     .get();
 
-                let streak = 0;
-                let lastDate = null;
-                progressSnapshot.forEach(doc => {
+                const feedbackMap = {};
+                feedbackSnapshot.forEach(doc => {
                     const data = doc.data();
-                    const date = data.date?.toDate?.() || new Date();
-                    if (!lastDate) {
-                        streak = 1;
-                        lastDate = date;
-                    } else {
-                        const diffDays = Math.floor((lastDate - date) / (1000 * 60 * 60 * 24));
-                        if (diffDays === 1) { streak++; lastDate = date; }
-                        else if (diffDays > 1) { streak = 1; lastDate = date; }
+                    if (data.courseId) {
+                        if (!feedbackMap[data.courseId]) {
+                            feedbackMap[data.courseId] = [];
+                        }
+                        feedbackMap[data.courseId].push(data);
                     }
                 });
 
-                document.getElementById('streakCount').textContent = streak > 0 ? `${streak}🔥` : '0🔥';
+                // ============================================================
+                // Step 4: Attach feedback to progress data
+                // ============================================================
+                for (const item of progressData) {
+                    if (item.courseId && feedbackMap[item.courseId]) {
+                        // Sort by createdAt descending
+                        const feedbacks = feedbackMap[item.courseId].sort((a, b) => {
+                            const dateA = a.createdAt?.toDate?.() || new Date(0);
+                            const dateB = b.createdAt?.toDate?.() || new Date(0);
+                            return dateB - dateA;
+                        });
+                        item.feedback = feedbacks[0] || null;
+                    } else {
+                        item.feedback = null;
+                    }
+                }
 
-                renderProgress(courses);
+                // ============================================================
+                // Step 5: Update stats
+                // ============================================================
+                const avgScoreFinal = progressData.length > 0 ? Math.round(totalScore / progressData.length) : 0;
+
+                document.getElementById('totalCourses').textContent = progressData.length;
+                document.getElementById('totalLessons').textContent = totalLessonsCompleted;
+                document.getElementById('avgScore').textContent = avgScoreFinal + '%';
+                document.getElementById('certificates').textContent = totalCertificates;
+
+                // ============================================================
+                // Step 6: Render
+                // ============================================================
+                renderProgress(progressData);
 
             } catch (error) {
                 console.error('Error loading progress:', error);
-                showToast('Error loading progress', 'error');
+                showToast('Error loading progress: ' + error.message, 'error');
+                document.getElementById('progressList').innerHTML = `
+                    <div class="empty-state">
+                        <span class="icon">⚠️</span>
+                        <p>Error loading progress. Please refresh.</p>
+                        <p style="font-size:0.8rem;color:#999;">${error.message}</p>
+                    </div>
+                `;
             }
         }
 
-        function renderProgress(courses) {
+        function updateStats(progressData, totalCertificates) {
+            const totalLessons = progressData.reduce((sum, p) => sum + (p.lessonsCompleted || 0), 0);
+            const totalScore = progressData.reduce((sum, p) => sum + (p.avgScore || 0), 0);
+            const avgScore = progressData.length > 0 ? Math.round(totalScore / progressData.length) : 0;
+
+            document.getElementById('totalCourses').textContent = progressData.length;
+            document.getElementById('totalLessons').textContent = totalLessons;
+            document.getElementById('avgScore').textContent = avgScore + '%';
+            document.getElementById('certificates').textContent = totalCertificates;
+        }
+
+        // ============================================================
+        // 🖌️ RENDER PROGRESS
+        // ============================================================
+        function renderProgress(progressData) {
             const container = document.getElementById('progressList');
 
-            if (!courses || courses.length === 0) {
+            if (!progressData || progressData.length === 0) {
                 container.innerHTML = `
-                    <div class="text-muted" style="padding:2rem;text-align:center;">📭 No courses yet. Start learning!</div>
+                    <div class="empty-state">
+                        <span class="icon">📭</span>
+                        <p>No courses enrolled yet.</p>
+                        <p style="font-size:0.8rem;">Start learning by enrolling in a course!</p>
+                    </div>
                 `;
                 return;
             }
 
             let html = '';
-            for (const course of courses) {
-                const progress = course.progress || 0;
-                const score = course.averageScore || 0;
-                const lessonsCompleted = course.lessonsCompleted || 0;
-                const totalLessons = course.lessons || 10;
+            for (const item of progressData) {
+                const progress = item.progress || 0;
+                const lessonsCompleted = item.lessonsCompleted || 0;
+                const totalLessons = item.totalLessons || 0;
+                const avgScore = item.avgScore || 0;
+                const tutorMark = item.tutorMark || 0;
+                const status = item.status || 'approved';
+
+                const color = progress >= 80 ? '#22c55e' : progress >= 50 ? '#f59e0b' : '#ef4444';
 
                 let badgeClass = 'poor';
-                let badgeText = '❌ Poor';
-                if (score >= 80) { badgeClass = 'excellent'; badgeText = '🌟 Excellent'; }
-                else if (score >= 60) { badgeClass = 'good'; badgeText = '✅ Good'; }
-                else if (score >= 40) { badgeClass = 'average'; badgeText = '📊 Average'; }
+                let badgeText = '❌ Needs Improvement';
+                if (avgScore >= 80) { badgeClass = 'excellent'; badgeText = '🌟 Excellent'; }
+                else if (avgScore >= 60) { badgeClass = 'good'; badgeText = '✅ Good'; }
+                else if (avgScore >= 40) { badgeClass = 'average'; badgeText = '📊 Average'; }
+
+                let statusBadge = '';
+                if (status === 'pending') {
+                    statusBadge = `<span class="status-badge pending">⏳ Pending</span>`;
+                } else if (progress === 100) {
+                    statusBadge = `<span class="status-badge completed">✅ Completed</span>`;
+                } else {
+                    statusBadge = `<span class="status-badge enrolled">📚 In Progress</span>`;
+                }
+
+                let feedbackHtml = '';
+                if (item.feedback) {
+                    const fb = item.feedback;
+                    const date = fb.createdAt?.toDate?.() || new Date();
+                    feedbackHtml = `
+                        <div style="margin-top:0.3rem;background:#f8f9fa;padding:0.4rem 0.6rem;border-radius:8px;font-size:0.8rem;">
+                            <span style="font-weight:600;color:#1a1a2e;">👨‍🏫 ${fb.tutorName || 'Tutor'}:</span>
+                            <span style="color:#444;">${fb.feedback || 'No feedback'}</span>
+                            <span style="font-size:0.65rem;color:#999;display:block;">${date.toLocaleDateString()}</span>
+                        </div>
+                    `;
+                }
 
                 html += `
-                    <div class="progress-item">
+                    <div class="progress-item" style="border-left-color: ${color};">
                         <div class="flex-between">
                             <div>
-                                <div class="subject-name">${course.icon || '📚'} ${course.name}</div>
-                                <div class="subject-meta">📝 ${course.exam || 'General'} • ${course.lessons || 0} lessons</div>
+                                <div class="subject-name">${item.icon} ${item.title}</div>
+                                <div class="subject-meta">📝 ${item.examType} • ${statusBadge}</div>
                             </div>
                             <span class="badge ${badgeClass}">${badgeText}</span>
                         </div>
-                        <div class="progress-bar"><div class="fill" style="width:${progress}%"></div></div>
+                        <div class="progress-bar"><div class="fill" style="width:${progress}%;background:${color};"></div></div>
                         <div class="flex-between">
                             <span style="font-size:0.85rem;color:#667eea;font-weight:600;">${progress}% complete</span>
                             <span style="font-size:0.85rem;color:#666;">${lessonsCompleted}/${totalLessons} lessons</span>
                         </div>
+                        <div class="tutor-mark">
+                            ${tutorMark > 0 ? `👨‍🏫 Tutor mark: ${tutorMark}%` : ''}
+                            ${avgScore > 0 ? `• 🎯 Score: ${avgScore}%` : ''}
+                        </div>
                         <div class="progress-stats">
-                            <span>🎯 Score: ${score}%</span>
-                            <span>⏱️ ${course.hoursSpent || 0}h spent</span>
-                            <span>📝 ${course.quizzesCompleted || 0} quizzes</span>
-                            ${course.certificateIssued ? `<span>🏆 Certificate Issued</span>` : ''}
+                            <span>📊 ${progress}% done</span>
+                            <span>📝 ${lessonsCompleted} lessons</span>
+                            ${progress === 100 ? '<span>🏆 Certificate earned!</span>' : ''}
+                        </div>
+                        ${feedbackHtml}
+                        <div style="margin-top:0.5rem;">
+                            <button onclick="window.location.href='bootcamp-course.html?id=${item.courseId}'" style="background:#667eea;color:white;border:none;padding:4px 14px;border-radius:8px;font-weight:600;font-size:0.75rem;cursor:pointer;transition:all 0.3s ease;">
+                                ${progress === 100 ? '👁️ View Course' : '▶️ Continue Learning'}
+                            </button>
                         </div>
                     </div>
                 `;
             }
+
             container.innerHTML = html;
         }
 
+        // ============================================================
+        // 🚀 INIT
+        // ============================================================
         auth.onAuthStateChanged(user => {
-            if (!user) { window.location.href = 'index.html'; }
-            else { loadProgress(); }
+            if (!user) {
+                window.location.href = 'index.html';
+            } else {
+                loadProgress();
+            }
         });
 
-        console.log('📊 My Progress loaded!');
+        console.log('📊 My Progress - FIXED!');
+        console.log('✅ No more ReferenceError.');
+        console.log('✅ Handles empty course IDs gracefully.');
     </script>
 
 </body>
