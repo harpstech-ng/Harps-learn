@@ -62,7 +62,7 @@
 
         @keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+        .header { margin-bottom: 1.5rem; }
         h2 { font-size: 1.8rem; color: #1a1a2e; }
         .subtitle { color: #666; margin-bottom: 1.5rem; font-size: 0.95rem; }
 
@@ -83,10 +83,6 @@
             color: white;
         }
         .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(102,126,234,0.4); }
-        .btn-danger {
-            background: #ef4444;
-            color: white;
-        }
         .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
         .form-group { margin-bottom: 1rem; }
@@ -180,6 +176,27 @@
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
+        /* Booking Card */
+        .booking-card {
+            background: #f8f9fa;
+            padding: 0.8rem;
+            border-radius: 10px;
+            margin-bottom: 0.5rem;
+            border: 2px solid #e5e7eb;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .booking-card:hover { border-color: #667eea; background: #f0f4ff; }
+        .booking-card .b-title { font-weight: 600; color: #1a1a2e; }
+        .booking-card .b-detail { font-size: 0.8rem; color: #666; }
+        .booking-card .b-id { font-size: 0.75rem; color: #667eea; font-weight: 600; font-family: monospace; }
+
+        .no-bookings {
+            text-align: center;
+            padding: 1rem;
+            color: #999;
+        }
+
         @media (max-width: 480px) {
             .card { padding: 1.5rem; }
             h2 { font-size: 1.5rem; }
@@ -196,17 +213,21 @@
     <div class="container">
         <div class="card">
             <div class="header">
-                <div>
-                    <h2>📍 GPS Check-in</h2>
-                </div>
-                <button onclick="logout()" class="btn btn-danger" style="width:auto;padding:8px 16px;font-size:0.8rem;border-radius:8px;">Logout</button>
+                <h2>📍 GPS Check-in</h2>
+                <p class="subtitle">Verify your location for the session</p>
             </div>
 
-            <p class="subtitle">Verify your location for the session</p>
+            <!-- Bookings List -->
+            <div style="margin-bottom:1rem;">
+                <label>Select Your Booking</label>
+                <div id="bookingsList">
+                    <div class="no-bookings">Loading your bookings...</div>
+                </div>
+            </div>
 
             <div class="form-group">
                 <label>Booking ID</label>
-                <input type="text" id="bookingId" placeholder="Enter booking ID" />
+                <input type="text" id="bookingId" placeholder="Enter booking ID manually" />
             </div>
 
             <div class="form-group">
@@ -234,7 +255,7 @@
                 <div id="historyList"></div>
             </div>
 
-            <p class="text-center text-muted mt-2">
+            <p class="text-muted mt-1" style="text-align:center;font-size:0.8rem;">
                 ⚠️ Both tutor and student must check in within <strong>100 meters</strong>
             </p>
         </div>
@@ -254,6 +275,9 @@
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.firestore();
+
+        let currentUser = null;
+        let activeBookings = [];
 
         function showToast(message, type = 'info') {
             const existing = document.querySelector('.toast');
@@ -312,12 +336,100 @@
             });
         }
 
+        // ============================================================
+        // 📋 LOAD BOOKINGS
+        // ============================================================
+        async function loadBookings() {
+            try {
+                const user = auth.currentUser;
+                if (!user) return;
+                currentUser = user;
+
+                const snapshot = await db.collection('bookings')
+                    .where('tutorId', '==', user.uid)
+                    .where('status', 'in', ['confirmed', 'pending'])
+                    .get();
+
+                const bookings = [];
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    bookings.push({
+                        id: doc.id,
+                        studentName: data.studentName || 'Student',
+                        subject: data.subject || 'General',
+                        date: data.date || 'N/A',
+                        time: data.time || 'N/A',
+                        status: data.status || 'pending'
+                    });
+                });
+
+                activeBookings = bookings;
+                renderBookings(bookings);
+
+            } catch (error) {
+                console.error('Error loading bookings:', error);
+                document.getElementById('bookingsList').innerHTML = `
+                    <div class="no-bookings">Error loading bookings</div>
+                `;
+            }
+        }
+
+        function renderBookings(bookings) {
+            const container = document.getElementById('bookingsList');
+
+            if (!bookings || bookings.length === 0) {
+                container.innerHTML = `
+                    <div class="no-bookings">
+                        📭 No active bookings found
+                        <p style="font-size:0.8rem;margin-top:0.3rem;">Bookings will appear here when students book you</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '';
+            for (const booking of bookings) {
+                html += `
+                    <div class="booking-card" onclick="selectBooking('${booking.id}')">
+                        <div class="flex-between">
+                            <span class="b-title">${booking.studentName}</span>
+                            <span class="b-id">#${booking.id.substring(0, 8)}</span>
+                        </div>
+                        <div class="b-detail">📚 ${booking.subject} • 📅 ${booking.date} • 🕐 ${booking.time}</div>
+                        <div class="b-detail" style="color:#667eea;">Status: ${booking.status.toUpperCase()}</div>
+                    </div>
+                `;
+            }
+            container.innerHTML = html;
+        }
+
+        function selectBooking(bookingId) {
+            document.getElementById('bookingId').value = bookingId;
+            showToast('✅ Booking ID selected!', 'success');
+            // Highlight the selected card
+            document.querySelectorAll('.booking-card').forEach(el => {
+                el.style.borderColor = '#e5e7eb';
+                el.style.background = '#f8f9fa';
+            });
+            // Find and highlight the selected one
+            const cards = document.querySelectorAll('.booking-card');
+            for (const card of cards) {
+                if (card.textContent.includes(bookingId.substring(0, 8))) {
+                    card.style.borderColor = '#667eea';
+                    card.style.background = '#f0f4ff';
+                }
+            }
+        }
+
+        // ============================================================
+        // 📍 CHECK-IN
+        // ============================================================
         async function performCheckin() {
             const bookingId = document.getElementById('bookingId').value.trim();
             const role = document.getElementById('roleSelect').value;
 
             if (!bookingId) {
-                showToast('Please enter a booking ID', 'error');
+                showToast('Please select or enter a booking ID', 'error');
                 return;
             }
 
@@ -422,11 +534,11 @@
                                 <p style="font-size:1.2rem;font-weight:bold;margin-top:0.5rem;">Session can begin! 🚀</p>
                             `;
 
-                            await db.collection('bookings').doc(bookingId).set({
+                            await db.collection('bookings').doc(bookingId).update({
                                 status: 'in-progress',
                                 gpsVerified: true,
                                 verificationTime: firebase.firestore.FieldValue.serverTimestamp()
-                            }, { merge: true });
+                            });
 
                             showToast('🎉 Both parties verified! Session can begin!', 'success');
                         } else {
@@ -488,21 +600,16 @@
             }
         }
 
-        async function logout() {
-            try {
-                await auth.signOut();
-                showToast('👋 Logged out', 'success');
-                window.location.href = 'index.html';
-            } catch (error) {
-                showToast('❌ ' + error.message, 'error');
-            }
-        }
-
+        // ============================================================
+        // 🚀 INIT
+        // ============================================================
         document.addEventListener('DOMContentLoaded', function() {
             auth.onAuthStateChanged(user => {
                 if (!user) {
                     showToast('Please login first', 'warning');
                     setTimeout(() => { window.location.href = 'index.html'; }, 1500);
+                } else {
+                    loadBookings();
                 }
             });
 
@@ -525,6 +632,7 @@
         });
 
         console.log('📍 GPS Check-in page loaded!');
+        console.log('📋 Booking list auto-loaded - no logout button!');
     </script>
 
 </body>
