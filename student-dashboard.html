@@ -16,7 +16,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>
 
     <style>
-        /* ===== ALL EXISTING STYLES (keep everything you already have) ===== */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -633,8 +632,7 @@
             align-items: flex-start;
         }
         .post-comments .comment-item .c-avatar {
-            width: 28px;
-            height: 28px;
+            width: 28px; height: 28px;
             border-radius: 50%;
             background: linear-gradient(135deg, #667eea, #764ba2);
             display: flex;
@@ -680,7 +678,7 @@
         }
         .post-comments .comment-input button:hover { transform: scale(1.05); }
 
-        /* ===== BOOKING CARD (new) ===== */
+        /* ===== BOOKING CARD ===== */
         .booking-card-mini {
             background: #f8f9fa;
             padding: 0.8rem;
@@ -698,7 +696,6 @@
         }
         .booking-card-mini .b-status.confirmed { background: #dbeafe; color: #1e40af; }
         .booking-card-mini .b-status.in-progress { background: #fef3c7; color: #92400e; }
-
         .booking-card-mini .btn-join {
             background: linear-gradient(135deg, #22c55e, #16a34a);
             color: white;
@@ -712,7 +709,6 @@
         }
         .booking-card-mini .btn-join:hover { transform: scale(1.05); }
 
-        /* ===== EXISTING COMPONENTS ===== */
         .welcome-banner {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
@@ -1358,7 +1354,7 @@
                 <div class="loading-spinner"><div class="spinner"></div></div>
             </div>
 
-            <!-- ===== NEW: MY BOOKINGS ===== -->
+            <!-- My Bookings -->
             <div id="myBookingsSection" class="post-card">
                 <div class="flex-between">
                     <h3 style="font-size:1rem;">📅 My Bookings</h3>
@@ -1504,7 +1500,6 @@
         function animateParticles() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             particles.forEach(p => { p.update(); p.draw(); });
-            // lines
             for (let i = 0; i < particles.length; i++) {
                 for (let j = i + 1; j < particles.length; j++) {
                     const dx = particles[i].x - particles[j].x;
@@ -1803,7 +1798,6 @@
                     bookings.push({ id: doc.id, ...doc.data() });
                 });
 
-                // Sort by date
                 bookings.sort((a,b) => new Date(a.date || 0) - new Date(b.date || 0));
 
                 myBookings = bookings;
@@ -1850,7 +1844,7 @@
         }
 
         // ============================================================
-        // LOAD STUDENT DASHBOARD (PARALLELIZED)
+        // LOAD STUDENT DASHBOARD (PARALLELIZED) - NO FAKE COURSES!
         // ============================================================
         async function loadStudentDashboard() {
             try {
@@ -1905,8 +1899,12 @@
                 updateProgress(45, '📚 Loading your courses...');
                 updateProgress(50, '📊 Fetching your progress...');
 
-                const [coursesSnapshot, bootcampSnapshot, progressSnapshot, offlineSnapshot, postsSnapshot, tutorsSnapshot, subscriptionsSnapshot] = await Promise.all([
-                    db.collection('courses').where('studentId', '==', user.uid).get(),
+                // ============================================================
+                // ✅ FIXED: Get courses from studentProgress ONLY
+                // NOT from the 'courses' collection with fake defaults!
+                // ============================================================
+                const [progressSnapshot, bootcampSnapshot, progressStatsSnapshot, offlineSnapshot, postsSnapshot, tutorsSnapshot, subscriptionsSnapshot] = await Promise.all([
+                    db.collection('studentProgress').where('studentId', '==', user.uid).get(),
                     db.collection('bootcampCourses').get(),
                     db.collection('progress').where('studentId', '==', user.uid).get(),
                     db.collection('offlineLessons').where('studentId', '==', user.uid).where('downloaded', '==', true).get(),
@@ -1915,42 +1913,61 @@
                     db.collection('subscriptions').where('userId', '==', user.uid).where('status', '==', 'active').get()
                 ]);
 
-                updateProgress(65, '📝 Loading courses...');
-                const courses = [];
-                coursesSnapshot.forEach(doc => { courses.push({ id: doc.id, ...doc.data() }); });
+                updateProgress(65, '📝 Loading enrolled courses...');
 
-                if (courses.length === 0) {
-                    const defaultCourses = [
-                        { name: 'Mathematics', exam: 'WAEC Prep', icon: '📐', lessons: 12, progress: 0, downloadable: true, studentId: user.uid },
-                        { name: 'English', exam: 'NECO Prep', icon: '📖', lessons: 10, progress: 0, downloadable: true, studentId: user.uid },
-                        { name: 'Physics', exam: 'WAEC Prep', icon: '⚡', lessons: 8, progress: 0, downloadable: false, studentId: user.uid },
-                        { name: 'Chemistry', exam: 'JAMB Prep', icon: '🧪', lessons: 6, progress: 0, downloadable: true, studentId: user.uid }
-                    ];
-                    for (const course of defaultCourses) {
-                        await db.collection('courses').add(course);
+                // ============================================================
+                // Build course list from studentProgress + bootcampCourses
+                // ============================================================
+                const enrolledCourses = [];
+                const bootcampMap = {};
+                bootcampSnapshot.forEach(doc => {
+                    bootcampMap[doc.id] = { id: doc.id, ...doc.data() };
+                });
+
+                progressSnapshot.forEach(doc => {
+                    const data = doc.data();
+                    const courseId = data.courseId;
+                    const course = bootcampMap[courseId] || {};
+                    
+                    // Only add if course exists in bootcampCourses
+                    if (courseId && bootcampMap[courseId]) {
+                        enrolledCourses.push({
+                            id: courseId,
+                            name: course.title || 'Untitled Course',
+                            icon: course.icon || '📚',
+                            exam: course.examType || 'General',
+                            lessons: course.totalLessons || 0,
+                            progress: data.progress || 0,
+                            downloadable: false,
+                            enrolledAt: data.enrolledAt?.toDate?.() || new Date()
+                        });
                     }
-                    allCourses = defaultCourses;
-                    renderCourses(defaultCourses);
-                    document.getElementById('bootcampCount').textContent = defaultCourses.length;
+                });
+
+                // ============================================================
+                // ✅ NO FAKE COURSES – Only show REAL enrolled courses
+                // ============================================================
+                if (enrolledCourses.length === 0) {
+                    allCourses = [];
+                    renderCourses([]);
+                    document.getElementById('bootcampCount').textContent = 0;
+                    document.getElementById('courseCount').textContent = 0;
                 } else {
-                    allCourses = courses;
-                    renderCourses(courses);
-                    document.getElementById('bootcampCount').textContent = courses.length;
+                    allCourses = enrolledCourses;
+                    renderCourses(enrolledCourses);
+                    document.getElementById('bootcampCount').textContent = enrolledCourses.length;
+                    document.getElementById('courseCount').textContent = enrolledCourses.length;
                 }
 
-                updateProgress(75, '🏆 Loading bootcamp...');
-                allBootcampCourses = [];
-                bootcampSnapshot.forEach(doc => allBootcampCourses.push({ id: doc.id, ...doc.data() }));
-
+                updateProgress(75, '🏆 Loading stats...');
                 let totalHours = 0, totalScore = 0, totalCoursesCount = 0, streak = 0;
-                progressSnapshot.forEach(doc => {
+                progressStatsSnapshot.forEach(doc => {
                     const data = doc.data();
                     totalHours += data.hoursSpent || 0;
                     totalScore += data.averageScore || 0;
                     totalCoursesCount++;
                     if (data.streak) streak = Math.max(streak, data.streak);
                 });
-                document.getElementById('courseCount').textContent = allCourses.length || 0;
                 document.getElementById('hoursCount').textContent = totalHours || 0;
                 document.getElementById('scoreCount').textContent = totalScore > 0 ? `${Math.round(totalScore / totalCoursesCount)}%` : '0%';
                 document.getElementById('streakCount').textContent = streak > 0 ? `${streak}🔥` : '0🔥';
@@ -2017,7 +2034,6 @@
                 await loadNotifications();
                 updateProgress(100, '🎉 Ready!');
 
-                // Mark dashboard as loaded (skip loading screen next time)
                 markDashboardLoaded();
 
             } catch (error) {
@@ -2030,26 +2046,24 @@
         }
 
         // ============================================================
-        // RENDER COURSES
+        // RENDER COURSES - ONLY REAL COURSES FROM TUTORS
         // ============================================================
         function renderCourses(courses) {
             const scroll = document.getElementById('coursesScroll');
             if (courses.length === 0) {
-                scroll.innerHTML = `<div class="text-muted" style="padding:1rem;text-align:center;">No courses enrolled yet</div>`;
+                scroll.innerHTML = `<div class="text-muted" style="padding:1rem;text-align:center;">📭 No courses enrolled yet.<br><span style="font-size:0.8rem;">Browse courses from the Holiday Bootcamp!</span></div>`;
                 return;
             }
             let html = '';
             for (const course of courses) {
                 const progress = course.progress || 0;
-                const downloadBadge = course.downloadable ? '<span class="download-badge">📥 Downloadable</span>' : '';
                 html += `
-                    <div class="course-card" onclick="window.location.href='holiday-bootcamp.html'">
+                    <div class="course-card" onclick="window.location.href='bootcamp-course.html?id=${course.id}'">
                         <div class="course-icon">${course.icon || '📚'}</div>
                         <div class="course-name">${course.name}</div>
                         <div class="course-meta">${course.exam || 'General'} • ${course.lessons || 0} lessons</div>
                         <div class="progress-text">${progress}% complete</div>
                         <div class="progress-bar"><div class="fill" style="width:${progress}%"></div></div>
-                        ${downloadBadge}
                     </div>
                 `;
             }
@@ -2057,7 +2071,7 @@
         }
 
         // ============================================================
-        // RENDER POSTS (with comments)
+        // RENDER POSTS
         // ============================================================
         function renderPosts(posts) {
             const feed = document.getElementById('feed');
@@ -2189,7 +2203,6 @@
 
                 input.value = '';
                 showToast('💬 Comment added!', 'success');
-                // Refresh posts
                 await loadStudentDashboard();
 
             } catch (error) {
@@ -2464,7 +2477,6 @@
                 if (!skipped) {
                     loadStudentDashboard();
                 } else {
-                    // Already loaded, but refresh data in background
                     loadStudentDashboard();
                 }
                 setInterval(loadNotifications, 30000);
@@ -2472,11 +2484,10 @@
             }
         });
 
-        console.log('📚 Student Dashboard - UPDATED!');
-        console.log('🚀 Fast loading with localStorage cache!');
-        console.log('📅 My Bookings section added with "Join Class" button!');
-        console.log('💬 Students can see and reply to comments!');
-        console.log('🏠 Live Class Room connected!');
+        console.log('📚 Student Dashboard - NO FAKE COURSES!');
+        console.log('✅ Only shows REAL courses from tutors via studentProgress.');
+        console.log('📭 Empty state shown when no courses enrolled.');
+        console.log('🔗 Click course card to go to bootcamp-course.html');
     </script>
 
 </body>
