@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Parent Dashboard - HarpsLearn</title>
+
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f0f2f5;
+            min-height: 100vh;
+        }
+
+        .navbar {
+            background: white;
+            padding: 0.6rem 1.2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        .navbar .logo {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #1a1a2e;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            cursor: pointer;
+        }
+        .navbar .logo span { color: #667eea; }
+        .navbar .back-btn {
+            background: none;
+            border: none;
+            font-size: 1.2rem;
+            cursor: pointer;
+            color: #666;
+            padding: 4px 10px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        .navbar .back-btn:hover { background: #f0f2f5; }
+
+        .container { max-width: 700px; margin: 0 auto; padding: 0.8rem; }
+
+        .page-header { margin-bottom: 1rem; }
+        .page-header h1 { font-size: 1.5rem; color: #1a1a2e; }
+        .page-header p { color: #666; font-size: 0.9rem; margin-top: 0.2rem; }
+
+        .card {
+            background: white;
+            border-radius: 14px;
+            padding: 1rem;
+            margin-bottom: 0.8rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+        .card .title {
+            font-weight: 700;
+            color: #1a1a2e;
+            font-size: 1rem;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.6rem;
+        }
+        .stat-box {
+            background: white;
+            padding: 0.8rem;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+        .stat-box .number { font-size: 1.3rem; font-weight: 700; color: #667eea; }
+        .stat-box .label { color: #666; font-size: 0.65rem; margin-top: 0.2rem; }
+
+        .progress-item {
+            padding: 0.6rem 0;
+            border-bottom: 1px solid #f3f4f6;
+        }
+        .progress-item:last-child { border-bottom: none; }
+        .progress-item .flex-between { display: flex; justify-content: space-between; align-items: center; }
+        .progress-item .subject-name { font-weight: 600; color: #1a1a2e; }
+        .progress-item .subject-score { font-weight: 700; color: #667eea; }
+        .progress-bar { width: 100%; height: 6px; background: #e5e7eb; border-radius: 4px; margin-top: 0.3rem; overflow: hidden; }
+        .progress-bar .fill { height: 100%; background: linear-gradient(90deg, #667eea, #764ba2); border-radius: 4px; transition: width 0.5s ease; }
+
+        .ai-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.6rem;
+            margin-top: 0.5rem;
+        }
+        .ai-stat {
+            background: #f8f9fa;
+            padding: 0.6rem;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .ai-stat .number { font-size: 1.2rem; font-weight: 700; color: #8b5cf6; }
+        .ai-stat .label { font-size: 0.7rem; color: #666; }
+
+        .feedback-item {
+            background: #f8f9fa;
+            padding: 0.8rem;
+            border-radius: 10px;
+            margin-bottom: 0.5rem;
+        }
+        .feedback-item .tutor { font-weight: 600; color: #1a1a2e; }
+        .feedback-item .score { float: right; font-weight: 700; color: #22c55e; }
+        .feedback-item .text { color: #444; font-size: 0.9rem; margin: 0.3rem 0; }
+        .feedback-item .strengths { font-size: 0.8rem; color: #22c55e; }
+        .feedback-item .weaknesses { font-size: 0.8rem; color: #ef4444; }
+
+        .chart-container {
+            height: 150px;
+            margin: 0.5rem 0;
+        }
+
+        .text-muted { color: #666; font-size: 0.85rem; }
+        .flex-between { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; }
+        .mt-1 { margin-top: 0.5rem; }
+        .mt-2 { margin-top: 1rem; }
+
+        .badge {
+            display: inline-block;
+            background: #22c55e;
+            color: white;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+        .badge-warning { background: #f59e0b; }
+        .badge-purple { background: #667eea; }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: white;
+            padding: 0.8rem 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            z-index: 5000;
+            animation: toastSlide 0.4s ease;
+            max-width: 90%;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+        .toast.success { background: #22c55e; }
+        .toast.error { background: #ef4444; }
+        .toast.warning { background: #f59e0b; }
+        @keyframes toastSlide { from { transform: translateX(-50%) translateY(100px); opacity: 0; } to { transform: translateX(-50%) translateY(0); opacity: 1; } }
+
+        @media (max-width: 600px) {
+            .navbar { padding: 0.4rem 0.8rem; }
+            .navbar .logo { font-size: 1.1rem; }
+            .container { padding: 0.4rem; }
+            .stats-grid { grid-template-columns: 1fr 1fr; gap: 0.4rem; }
+            .ai-stats { grid-template-columns: 1fr 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="navbar">
+        <div class="logo" onclick="window.location.href='parent-dashboard.html'">👨‍👧 Harps<span>Learn</span></div>
+        <button class="back-btn" onclick="window.location.href='parent-dashboard.html'">✕</button>
+    </div>
+
+    <div class="container">
+        <div class="page-header">
+            <h1>👨‍👧 Child Progress Report</h1>
+            <p>Track your child's learning journey, AI usage, and tutor feedback.</p>
+        </div>
+
+        <!-- Child Selector -->
+        <div class="card" id="childSelector" style="display:none;">
+            <label style="font-weight:600;">Select Child</label>
+            <select id="childSelect" onchange="loadChildData(this.value)" style="width:100%;padding:10px;border:2px solid #e5e7eb;border-radius:10px;margin-top:0.3rem;">
+                <option value="">Select a child...</option>
+            </select>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats-grid" id="statsGrid">
+            <div class="stat-box">
+                <div class="number" id="avgScore">0%</div>
+                <div class="label">📊 Average Score</div>
+            </div>
+            <div class="stat-box">
+                <div class="number" id="coursesCompleted">0</div>
+                <div class="label">✅ Courses Done</div>
+            </div>
+            <div class="stat-box">
+                <div class="number" id="aiQuestions">0</div>
+                <div class="label">🤖 AI Questions</div>
+            </div>
+            <div class="stat-box">
+                <div class="number" id="tutorFeedback">0</div>
+                <div class="label">📝 Tutor Feedback</div>
+            </div>
+        </div>
+
+        <!-- Progress Chart -->
+        <div class="card">
+            <div class="title">📈 Progress Over Time</div>
+            <div class="chart-container">
+                <canvas id="progressChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Subject Progress -->
+        <div class="card">
+            <div class="title">📚 Subject Progress</div>
+            <div id="subjectProgress">
+                <div class="text-muted" style="padding:0.5rem 0;">No subjects tracked yet</div>
+            </div>
+        </div>
+
+        <!-- AI Usage Analytics -->
+        <div class="card">
+            <div class="title">🤖 AI Usage Analytics</div>
+            <div id="aiUsage">
+                <div class="text-muted" style="padding:0.5rem 0;">No AI usage data yet</div>
+            </div>
+        </div>
+
+        <!-- Tutor Feedback -->
+        <div class="card">
+            <div class="title">📝 Tutor Feedback & Marks</div>
+            <div id="tutorFeedbackList">
+                <div class="text-muted" style="padding:0.5rem 0;">No tutor feedback yet</div>
+            </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="card">
+            <div class="title">📋 Recent Activity</div>
+            <div id="recentActivity">
+                <div class="text-muted" style="padding:0.5rem 0;">No recent activity</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDy-j3_iZwv7IE7HYHircFeEWGdoGizf5M",
+            authDomain: "harpslearn.firebaseapp.com",
+            projectId: "harpslearn",
+            storageBucket: "harpslearn.firebasestorage.app",
+            messagingSenderId: "625210543198",
+            appId: "1:625210543198:web:6faebd2af1465facf338cf",
+            measurementId: "G-8Z8HVC5V5J"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        let allChildren = [];
+        let currentChildId = null;
+        let progressChart = null;
+
+        function showToast(message, type = 'info') {
+            const existing = document.querySelector('.toast');
+            if (existing) existing.remove();
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => { toast.remove(); }, 4000);
+        }
+
+        // ============================================================
+        // LOAD CHILDREN
+        // ============================================================
+        async function loadChildren() {
+            try {
+                const user = auth.currentUser;
+                if (!user) { window.location.href = 'index.html'; return; }
+
+                const snapshot = await db.collection('students')
+                    .where('parentId', '==', user.uid)
+                    .get();
+
+                allChildren = [];
+                snapshot.forEach(doc => {
+                    allChildren.push({ id: doc.id, ...doc.data() });
+                });
+
+                if (allChildren.length === 0) {
+                    document.getElementById('childSelector').style.display = 'block';
+                    document.getElementById('childSelect').innerHTML = `<option value="">No children linked yet</option>`;
+                    return;
+                }
+
+                // Populate child selector
+                const select = document.getElementById('childSelect');
+                select.innerHTML = `<option value="">Select a child...</option>`;
+                for (const child of allChildren) {
+                    const userDoc = await db.collection('users').doc(child.userId).get();
+                    const name = userDoc.exists ? userDoc.data().fullName || 'Child' : 'Child';
+                    select.innerHTML += `<option value="${child.userId}">${name}</option>`;
+                }
+
+                document.getElementById('childSelector').style.display = 'block';
+
+                // Auto-select first child
+                if (allChildren.length > 0) {
+                    currentChildId = allChildren[0].userId;
+                    select.value = currentChildId;
+                    loadChildData(currentChildId);
+                }
+
+            } catch (error) {
+                console.error('Error loading children:', error);
+                showToast('Error loading children', 'error');
+            }
+        }
+
+        // ============================================================
+        // LOAD CHILD DATA (REAL PROGRESS)
+        // ============================================================
+        async function loadChildData(childId) {
+            if (!childId) return;
+            currentChildId = childId;
+
+            try {
+                // Get child's user data
+                const userDoc = await db.collection('users').doc(childId).get();
+                const userData = userDoc.exists ? userDoc.data() : {};
+                document.getElementById('pageHeader').innerHTML = `
+                    <h1>👨‍👧 ${userData.fullName || 'Child'}'s Progress</h1>
+                    <p>Track their learning journey and improvement.</p>
+                `;
+
+                // Get all progress records
+                const progressSnapshot = await db.collection('studentProgress')
+                    .where('studentId', '==', childId)
+                    .get();
+
+                const progressData = [];
+                progressSnapshot.forEach(doc => {
+                    progressData.push({ id: doc.id, ...doc.data() });
+                });
+
+                // Get AI usage
+                const aiSnapshot = await db.collection('aiUsage')
+                    .where('studentId', '==', childId)
+                    .get();
+                let aiData = null;
+                aiSnapshot.forEach(doc => { aiData = { id: doc.id, ...doc.data() }; });
+
+                // Get tutor feedback
+                const feedbackSnapshot = await db.collection('tutorFeedback')
+                    .where('studentId', '==', childId)
+                    .orderBy('createdAt', 'desc')
+                    .get();
+                const feedbackData = [];
+                feedbackSnapshot.forEach(doc => {
+                    feedbackData.push({ id: doc.id, ...doc.data() });
+                });
+
+                // Calculate stats
+                const totalProgress = progressData.reduce((sum, p) => sum + (p.progress || 0), 0);
+                const avgScore = progressData.length > 0 ? Math.round(totalProgress / progressData.length) : 0;
+                const completedCourses = progressData.filter(p => p.progress === 100).length;
+                const totalAIQuestions = aiData?.totalQuestions || 0;
+                const totalFeedback = feedbackData.length;
+
+                document.getElementById('avgScore').textContent = avgScore + '%';
+                document.getElementById('coursesCompleted').textContent = completedCourses;
+                document.getElementById('aiQuestions').textContent = totalAIQuestions;
+                document.getElementById('tutorFeedback').textContent = totalFeedback;
+
+                // Render subject progress
+                renderSubjectProgress(progressData);
+
+                // Render AI usage
+                renderAIUsage(aiData);
+
+                // Render tutor feedback
+                renderTutorFeedback(feedbackData);
+
+                // Render recent activity
+                renderRecentActivity(progressData, feedbackData);
+
+                // Update chart
+                updateProgressChart(progressData);
+
+            } catch (error) {
+                console.error('Error loading child data:', error);
+                showToast('Error loading child data', 'error');
+            }
+        }
+
+        // ============================================================
+        // RENDER SUBJECT PROGRESS
+        // ============================================================
+        function renderSubjectProgress(progressData) {
+            const container = document.getElementById('subjectProgress');
+
+            if (!progressData || progressData.length === 0) {
+                container.innerHTML = `<div class="text-muted" style="padding:0.5rem 0;">No subjects tracked yet</div>`;
+                return;
+            }
+
+            let html = '';
+            for (const p of progressData) {
+                const courseName = p.courseTitle || p.courseId || 'Course';
+                const progress = p.progress || 0;
+                const color = progress >= 80 ? '#22c55e' : progress >= 50 ? '#f59e0b' : '#ef4444';
+
+                html += `
+                    <div class="progress-item">
+                        <div class="flex-between">
+                            <span class="subject-name">${courseName}</span>
+                            <span class="subject-score" style="color:${color};">${progress}%</span>
+                        </div>
+                        <div class="progress-bar"><div class="fill" style="width:${progress}%;background:${color};"></div></div>
+                        <div style="font-size:0.7rem;color:#666;margin-top:0.2rem;">
+                            ${p.lessonsCompleted?.length || 0}/${p.totalLessons || 0} lessons completed
+                            ${p.overallTutorRating ? `• Tutor mark: ${p.overallTutorRating}%` : ''}
+                        </div>
+                    </div>
+                `;
+            }
+            container.innerHTML = html;
+        }
+
+        // ============================================================
+        // RENDER AI USAGE
+        // ============================================================
+        function renderAIUsage(aiData) {
+            const container = document.getElementById('aiUsage');
+
+            if (!aiData || aiData.totalQuestions === 0) {
+                container.innerHTML = `<div class="text-muted" style="padding:0.5rem 0;">No AI usage data yet</div>`;
+                return;
+            }
+
+            const topics = aiData.topics || {};
+            const topicKeys = Object.keys(topics);
+            let topicsHtml = '';
+            if (topicKeys.length > 0) {
+                topicsHtml = '<div style="margin-top:0.5rem;">';
+                for (const key of topicKeys) {
+                    topicsHtml += `
+                        <span style="background:#f0f2f5;padding:2px 10px;border-radius:10px;font-size:0.7rem;margin-right:0.3rem;">
+                            ${key}: ${topics[key]} questions
+                        </span>
+                    `;
+                }
+                topicsHtml += '</div>';
+            }
+
+            container.innerHTML = `
+                <div class="ai-stats">
+                    <div class="ai-stat">
+                        <div class="number">${aiData.totalQuestions}</div>
+                        <div class="label">📊 Total Questions</div>
+                    </div>
+                    <div class="ai-stat">
+                        <div class="number">${aiData.averageResponseQuality || 0}%</div>
+                        <div class="label">🎯 Avg Quality</div>
+                    </div>
+                </div>
+                ${topicsHtml}
+                <div style="font-size:0.7rem;color:#999;margin-top:0.3rem;">
+                    Last used: ${aiData.lastUsed?.toDate?.()?.toLocaleDateString() || 'N/A'}
+                </div>
+            `;
+        }
+
+        // ============================================================
+        // RENDER TUTOR FEEDBACK
+        // ============================================================
+        function renderTutorFeedback(feedbackData) {
+            const container = document.getElementById('tutorFeedbackList');
+
+            if (!feedbackData || feedbackData.length === 0) {
+                container.innerHTML = `<div class="text-muted" style="padding:0.5rem 0;">No tutor feedback yet</div>`;
+                return;
+            }
+
+            let html = '';
+            for (const fb of feedbackData) {
+                const date = fb.createdAt?.toDate?.() || new Date();
+                const strengths = fb.strengths?.join(', ') || 'Not specified';
+                const weaknesses = fb.weaknesses?.join(', ') || 'Not specified';
+
+                html += `
+                    <div class="feedback-item">
+                        <div>
+                            <span class="tutor">👨‍🏫 ${fb.tutorName || 'Tutor'}</span>
+                            <span class="score">${fb.score || 0}%</span>
+                        </div>
+                        <div style="font-size:0.7rem;color:#999;">📚 ${fb.subject || 'General'} • ${date.toLocaleDateString()}</div>
+                        <div class="text">${fb.feedback || 'No feedback provided'}</div>
+                        ${fb.strengths?.length > 0 ? `<div class="strengths">✅ Strengths: ${strengths}</div>` : ''}
+                        ${fb.weaknesses?.length > 0 ? `<div class="weaknesses">⚠️ Areas to improve: ${weaknesses}</div>` : ''}
+                    </div>
+                `;
+            }
+            container.innerHTML = html;
+        }
+
+        // ============================================================
+        // RENDER RECENT ACTIVITY
+        // ============================================================
+        function renderRecentActivity(progressData, feedbackData) {
+            const container = document.getElementById('recentActivity');
+
+            const activities = [];
+
+            // Add progress activities
+            for (const p of progressData) {
+                if (p.lastAccessed?.toDate) {
+                    activities.push({
+                        date: p.lastAccessed.toDate(),
+                        message: `📚 ${p.courseTitle || 'Course'}: ${p.progress}% complete`,
+                        type: 'progress'
+                    });
+                }
+                if (p.completedAt?.toDate) {
+                    activities.push({
+                        date: p.completedAt.toDate(),
+                        message: `🎉 Completed ${p.courseTitle || 'course'}!`,
+                        type: 'complete'
+                    });
+                }
+            }
+
+            // Add feedback activities
+            for (const fb of feedbackData) {
+                if (fb.createdAt?.toDate) {
+                    activities.push({
+                        date: fb.createdAt.toDate(),
+                        message: `📝 New tutor feedback from ${fb.tutorName || 'Tutor'}`,
+                        type: 'feedback'
+                    });
+                }
+            }
+
+            // Sort by date (newest first)
+            activities.sort((a, b) => b.date - a.date);
+
+            if (activities.length === 0) {
+                container.innerHTML = `<div class="text-muted" style="padding:0.5rem 0;">No recent activity</div>`;
+                return;
+            }
+
+            let html = '';
+            for (const act of activities.slice(0, 5)) {
+                const time = timeAgo(act.date);
+                html += `
+                    <div style="padding:0.3rem 0;border-bottom:1px solid #f3f4f6;display:flex;gap:0.5rem;align-items:center;">
+                        <span style="font-size:1.2rem;">${act.type === 'complete' ? '🎉' : act.type === 'feedback' ? '📝' : '📚'}</span>
+                        <div style="flex:1;">
+                            <div style="font-size:0.85rem;color:#333;">${act.message}</div>
+                            <div style="font-size:0.7rem;color:#999;">${time}</div>
+                        </div>
+                    </div>
+                `;
+            }
+            container.innerHTML = html;
+        }
+
+        // ============================================================
+        // UPDATE PROGRESS CHART
+        // ============================================================
+        function updateProgressChart(progressData) {
+            const ctx = document.getElementById('progressChart').getContext('2d');
+
+            // For now, show a simple chart based on progress data
+            // In production, you'd store historical progress
+            const labels = progressData.map(p => p.courseTitle || p.courseId || 'Course');
+            const data = progressData.map(p => p.progress || 0);
+            const colors = data.map(v => v >= 80 ? '#22c55e' : v >= 50 ? '#f59e0b' : '#ef4444');
+
+            if (progressChart) {
+                progressChart.destroy();
+            }
+
+            progressChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Progress (%)',
+                        data: data,
+                        backgroundColor: colors,
+                        borderColor: colors.map(c => c),
+                        borderWidth: 1,
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            grid: { color: 'rgba(0,0,0,0.05)' }
+                        },
+                        x: {
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+        }
+
+        function timeAgo(date) {
+            if (!date) return 'N/A';
+            const seconds = Math.floor((new Date() - date) / 1000);
+            if (seconds < 60) return 'just now';
+            const minutes = Math.floor(seconds / 60);
+            if (minutes < 60) return minutes + 'm ago';
+            const hours = Math.floor(minutes / 60);
+            if (hours < 24) return hours + 'h ago';
+            const days = Math.floor(hours / 24);
+            if (days < 7) return days + 'd ago';
+            return date.toLocaleDateString();
+        }
+
+        auth.onAuthStateChanged(user => {
+            if (!user) { window.location.href = 'index.html'; }
+            else { loadChildren(); }
+        });
+
+        console.log('👨‍👧 Parent Progress Dashboard loaded!');
+        console.log('📊 Real-time progress tracking for parents!');
+    </script>
+
+</body>
+</html>
