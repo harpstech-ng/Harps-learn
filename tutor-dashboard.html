@@ -84,6 +84,16 @@
             font-size: 0.95rem;
             letter-spacing: 1px;
         }
+        #loadingScreen .dots {
+            display: inline-block;
+            animation: dots 1.5s steps(4, end) infinite;
+        }
+        @keyframes dots {
+            0% { content: ''; }
+            25% { content: '.'; }
+            50% { content: '..'; }
+            75% { content: '...'; }
+        }
         #loadingScreen.hidden {
             opacity: 0;
             pointer-events: none;
@@ -91,6 +101,12 @@
 
         #mainContent { display: none; opacity: 0; transition: opacity 0.5s ease; }
         #mainContent.visible { display: block; opacity: 1; }
+
+        /* SKIP LOADING SCREEN IF ALREADY LOADED */
+        #loadingScreen.skip {
+            opacity: 0;
+            pointer-events: none;
+        }
 
         .navbar {
             background: white;
@@ -574,7 +590,6 @@
         .toast.warning { background: #f59e0b; }
         @keyframes toastSlide { from { transform: translateX(-50%) translateY(100px); opacity: 0; } to { transform: translateX(-50%) translateY(0); opacity: 1; } }
 
-        /* ===== NEW: COURSE CARD ===== */
         .course-mini-card {
             display: flex;
             justify-content: space-between;
@@ -606,6 +621,66 @@
 
         .empty-state { text-align: center; padding: 1rem 0; color: #999; }
         .empty-state .icon { font-size: 2rem; display: block; margin-bottom: 0.3rem; }
+
+        /* ===== COMMENTS IN POSTS ===== */
+        .post-comments {
+            margin-top: 0.5rem;
+            padding-top: 0.5rem;
+            border-top: 1px solid #e5e7eb;
+        }
+        .post-comments .comment-item {
+            display: flex;
+            gap: 0.5rem;
+            padding: 0.3rem 0;
+            align-items: flex-start;
+        }
+        .post-comments .comment-item .c-avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 0.7rem;
+            flex-shrink: 0;
+        }
+        .post-comments .comment-item .c-body {
+            background: #f0f2f5;
+            padding: 0.3rem 0.7rem;
+            border-radius: 10px;
+            flex: 1;
+        }
+        .post-comments .comment-item .c-body .c-user { font-weight: 600; font-size: 0.8rem; color: #1a1a2e; }
+        .post-comments .comment-item .c-body .c-text { font-size: 0.85rem; color: #333; }
+        .post-comments .comment-item .c-body .c-time { font-size: 0.65rem; color: #999; }
+        .post-comments .comment-input {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.4rem;
+        }
+        .post-comments .comment-input input {
+            flex: 1;
+            padding: 0.4rem 0.8rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-family: inherit;
+        }
+        .post-comments .comment-input input:focus { outline: none; border-color: #667eea; }
+        .post-comments .comment-input button {
+            padding: 0.3rem 1rem;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.8rem;
+            cursor: pointer;
+        }
+        .post-comments .comment-input button:hover { transform: scale(1.05); }
 
         @media (max-width: 600px) {
             .navbar { padding: 0.4rem 0.8rem; }
@@ -792,7 +867,7 @@
                 </div>
             </div>
 
-            <!-- Quick Actions (UPDATED: Added Create Course) -->
+            <!-- Quick Actions -->
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:0.6rem;margin-bottom:0.8rem;">
                 <button onclick="window.location.href='tutor-gps-checkin.html'" class="btn-primary" style="padding:0.8rem;font-size:0.9rem;">
                     📍 GPS Check-in
@@ -819,7 +894,7 @@
                 </div>
             </div>
 
-            <!-- ===== NEW: MY BOOTCAMP COURSES ===== -->
+            <!-- My Bootcamp Courses -->
             <div class="post-card">
                 <div class="flex-between">
                     <h3 style="font-size:1rem;">📚 My Bootcamp Courses</h3>
@@ -893,6 +968,7 @@
         let bootcampCourses = [];
         let myCourses = [];
         let likedPosts = new Set();
+        let isFirstLoad = true;
 
         function showToast(message, type = 'info') {
             const existing = document.querySelector('.toast');
@@ -970,6 +1046,37 @@
             sidebarAvatar.innerHTML = `<img src="${url}" alt="Profile" />`;
             const navAvatar = document.getElementById('navAvatar');
             navAvatar.innerHTML = `<img src="${url}" alt="Profile" />`;
+        }
+
+        // ============================================================
+        // 📥 LOADING SCREEN CONTROL
+        // ============================================================
+        function controlLoadingScreen() {
+            const loadingScreen = document.getElementById('loadingScreen');
+            const mainContent = document.getElementById('mainContent');
+            
+            // Check if this is first load
+            if (localStorage.getItem('tutorDashboardLoaded') === 'true') {
+                // Skip loading screen
+                loadingScreen.classList.add('skip');
+                mainContent.classList.add('visible');
+                mainContent.style.display = 'block';
+                isFirstLoad = false;
+            } else {
+                // First load - show loading screen
+                loadingScreen.classList.remove('skip');
+            }
+        }
+
+        // Call this when dashboard is fully loaded
+        function markDashboardLoaded() {
+            localStorage.setItem('tutorDashboardLoaded', 'true');
+            const loadingScreen = document.getElementById('loadingScreen');
+            const mainContent = document.getElementById('mainContent');
+            loadingScreen.classList.add('hidden');
+            mainContent.classList.add('visible');
+            mainContent.style.display = 'block';
+            isFirstLoad = false;
         }
 
         // ============================================================
@@ -1137,16 +1244,15 @@
                 await loadPosts();
                 await loadMyCourses();
 
-                setTimeout(() => {
-                    document.getElementById('loadingScreen').classList.add('hidden');
-                    document.getElementById('mainContent').classList.add('visible');
-                }, 800);
+                // Mark dashboard as loaded
+                markDashboardLoaded();
 
             } catch (error) {
                 console.error('Error loading dashboard:', error);
                 showToast('Error loading dashboard', 'error');
                 document.getElementById('loadingScreen').classList.add('hidden');
                 document.getElementById('mainContent').classList.add('visible');
+                document.getElementById('mainContent').style.display = 'block';
             }
         }
 
@@ -1170,7 +1276,7 @@
         }
 
         // ============================================================
-        // 📚 LOAD MY COURSES (NEW!)
+        // 📚 LOAD MY COURSES
         // ============================================================
         async function loadMyCourses() {
             try {
@@ -1186,7 +1292,6 @@
                     myCourses.push({ id: doc.id, ...doc.data() });
                 });
 
-                // Update badge count
                 document.getElementById('myCourseCount').textContent = myCourses.length || 0;
                 document.getElementById('tutorBootcampCount').textContent = myCourses.length || 0;
 
@@ -1242,32 +1347,17 @@
             container.innerHTML = html;
         }
 
-        // ============================================================
-        // ✏️ EDIT COURSE
-        // ============================================================
         function editCourse(courseId) {
-            // For now, redirect to create course page with edit mode
-            // You can build an edit page later
             showToast('📝 Edit feature coming soon!', 'info');
-            // window.location.href = `tutor-create-course.html?edit=${courseId}`;
         }
 
-        // ============================================================
-        // 🗑️ DELETE COURSE
-        // ============================================================
         async function deleteCourse(courseId, courseTitle) {
             if (!confirm(`Are you sure you want to delete "${courseTitle}"?\n\nThis will also delete all lessons and student progress associated with this course.`)) return;
 
             try {
-                // Delete all lessons (sub-collection would be handled separately)
-                // For simplicity, we'll just delete the course document
-                // In production, you should also delete all lessons
-
                 await db.collection('bootcampCourses').doc(courseId).delete();
-
                 showToast('🗑️ Course deleted successfully.', 'success');
                 await loadMyCourses();
-
             } catch (error) {
                 console.error('Error deleting course:', error);
                 showToast('Error deleting course', 'error');
@@ -1346,8 +1436,8 @@
                             <span class="booking-status ${statusClass}">${status.toUpperCase()}</span>
                         </div>
                         <div class="booking-time">🕐 ${time} • 📍 ${location} • ${duration}</div>
-                        <button onclick="window.location.href='tutor-gps-checkin.html'" class="btn-primary btn-sm" style="margin-top:0.3rem;">
-                            📍 Start Class
+                        <button onclick="window.location.href='live-class-room.html?booking=${booking.id}'" class="btn-primary btn-sm" style="margin-top:0.3rem;">
+                            ▶️ Start Class
                         </button>
                     </div>
                 `;
@@ -1386,19 +1476,33 @@
         }
 
         // ============================================================
-        // 📝 LOAD POSTS
+        // 📝 LOAD POSTS WITH COMMENTS
         // ============================================================
         async function loadPosts() {
             try {
                 const snapshot = await db.collection('posts')
                     .orderBy('createdAt', 'desc')
-                    .limit(3)
+                    .limit(5)
                     .get();
 
                 const postsData = [];
-                snapshot.forEach(doc => {
-                    postsData.push({ id: doc.id, ...doc.data() });
-                });
+                for (const doc of snapshot.docs) {
+                    const postData = { id: doc.id, ...doc.data() };
+                    
+                    // Load comments for this post
+                    const commentsSnapshot = await db.collection('comments')
+                        .where('postId', '==', doc.id)
+                        .orderBy('createdAt', 'asc')
+                        .get();
+                    
+                    const commentsData = [];
+                    commentsSnapshot.forEach(cDoc => {
+                        commentsData.push({ id: cDoc.id, ...cDoc.data() });
+                    });
+                    postData.commentsList = commentsData;
+                    
+                    postsData.push(postData);
+                }
 
                 posts = postsData;
                 renderPosts(posts);
@@ -1428,8 +1532,29 @@
                 const time = post.createdAt?.toDate?.() || new Date();
                 const content = post.content || '';
                 const likes = post.likes || 0;
-                const comments = post.comments || 0;
                 const isLiked = likedPosts.has(post.id);
+                const comments = post.commentsList || [];
+
+                // Build comments HTML
+                let commentsHtml = '';
+                if (comments.length > 0) {
+                    for (const comment of comments) {
+                        const cUser = comment.userName || 'User';
+                        const cAvatar = comment.userAvatar || cUser.charAt(0).toUpperCase();
+                        const cTime = comment.createdAt?.toDate?.() || new Date();
+                        const isReply = comment.parentId; // For future reply feature
+                        commentsHtml += `
+                            <div class="comment-item" style="${isReply ? 'margin-left:2rem;' : ''}">
+                                <div class="c-avatar">${cAvatar}</div>
+                                <div class="c-body">
+                                    <div class="c-user">${cUser}</div>
+                                    <div class="c-text">${comment.text}</div>
+                                    <div class="c-time">${timeAgo(cTime)}</div>
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
 
                 html += `
                     <div class="post-card" style="margin-bottom:0.6rem;">
@@ -1448,17 +1573,73 @@
                             <button onclick="likePostTutor('${post.id}')" style="background:none;border:none;cursor:pointer;color:${isLiked ? '#ef4444' : '#666'};font-size:0.75rem;display:flex;align-items:center;gap:4px;padding:4px 8px;border-radius:8px;transition:all 0.3s ease;">
                                 ${isLiked ? '❤️' : '🤍'} <span id="likeCount-${post.id}">${likes}</span>
                             </button>
-                            <button onclick="commentPostTutor('${post.id}')" style="background:none;border:none;cursor:pointer;color:#666;font-size:0.75rem;display:flex;align-items:center;gap:4px;padding:4px 8px;border-radius:8px;transition:all 0.3s ease;">
-                                💬 <span id="commentCount-${post.id}">${comments}</span>
+                            <button onclick="toggleComments('${post.id}')" style="background:none;border:none;cursor:pointer;color:#666;font-size:0.75rem;display:flex;align-items:center;gap:4px;padding:4px 8px;border-radius:8px;transition:all 0.3s ease;">
+                                💬 <span>${comments.length}</span>
                             </button>
                             <button onclick="sharePostTutor('${post.id}')" style="background:none;border:none;cursor:pointer;color:#666;font-size:0.75rem;display:flex;align-items:center;gap:4px;padding:4px 8px;border-radius:8px;transition:all 0.3s ease;">
                                 ↗️ Share
                             </button>
                         </div>
+                        <div class="post-comments" id="comments-${post.id}" style="display:none;">
+                            ${commentsHtml}
+                            <div class="comment-input">
+                                <input type="text" id="comment-input-${post.id}" placeholder="Write a comment..." />
+                                <button onclick="addCommentTutor('${post.id}')">Post</button>
+                            </div>
+                        </div>
                     </div>
                 `;
             }
             container.innerHTML = html;
+        }
+
+        // ============================================================
+        // 💬 TUTOR COMMENTS
+        // ============================================================
+        function toggleComments(postId) {
+            const container = document.getElementById(`comments-${postId}`);
+            if (container) {
+                container.style.display = container.style.display === 'none' ? 'block' : 'none';
+            }
+        }
+
+        async function addCommentTutor(postId) {
+            const input = document.getElementById(`comment-input-${postId}`);
+            const text = input.value.trim();
+            if (!text) { showToast('Please write a comment', 'warning'); return; }
+
+            try {
+                const user = auth.currentUser;
+                if (!user) return;
+
+                const userDoc = await db.collection('users').doc(user.uid).get();
+                const userData = userDoc.exists ? userDoc.data() : {};
+                const userName = userData.fullName || 'Tutor';
+
+                const commentData = {
+                    postId: postId,
+                    userId: user.uid,
+                    userName: userName,
+                    userAvatar: userData.profilePic || '',
+                    text: text,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                };
+
+                await db.collection('comments').add(commentData);
+
+                // Increment comment count on post
+                await db.collection('posts').doc(postId).update({
+                    comments: firebase.firestore.FieldValue.increment(1)
+                });
+
+                input.value = '';
+                showToast('💬 Comment added!', 'success');
+                await loadPosts();
+
+            } catch (error) {
+                console.error('Error adding comment:', error);
+                showToast('Error adding comment', 'error');
+            }
         }
 
         // ============================================================
@@ -1506,38 +1687,6 @@
         }
 
         // ============================================================
-        // 💬 COMMENT
-        // ============================================================
-        function commentPostTutor(postId) {
-            const comment = prompt('💬 Write a comment:');
-            if (comment && comment.trim()) {
-                const user = auth.currentUser;
-                if (!user) {
-                    showToast('Please login first', 'error');
-                    return;
-                }
-
-                db.collection('comments').add({
-                    postId: postId,
-                    userId: user.uid,
-                    userName: userData?.fullName || 'Tutor',
-                    userAvatar: userData?.profilePic || '',
-                    text: comment.trim(),
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                }).then(() => {
-                    db.collection('posts').doc(postId).update({
-                        comments: firebase.firestore.FieldValue.increment(1)
-                    }).then(() => {
-                        showToast('💬 Comment added!', 'success');
-                        loadPosts();
-                    });
-                }).catch(() => {
-                    showToast('Error adding comment', 'error');
-                });
-            }
-        }
-
-        // ============================================================
         // ↗️ SHARE
         // ============================================================
         function sharePostTutor(postId) {
@@ -1564,6 +1713,8 @@
             if (!confirm('Are you sure you want to logout?')) return;
 
             try {
+                // Clear the dashboard loaded flag
+                localStorage.removeItem('tutorDashboardLoaded');
                 await auth.signOut();
                 showToast('👋 Logged out', 'success');
                 window.location.href = 'index.html';
@@ -1572,11 +1723,16 @@
             }
         }
 
+        // ============================================================
+        // 🚀 INIT
+        // ============================================================
         auth.onAuthStateChanged(user => {
             if (!user) {
                 document.getElementById('loadingScreen').classList.add('hidden');
                 window.location.href = 'index.html';
             } else {
+                // Control loading screen
+                controlLoadingScreen();
                 loadTutorDashboard();
                 setInterval(loadNotifications, 30000);
                 setInterval(loadBookings, 60000);
@@ -1584,8 +1740,10 @@
             }
         });
 
-        console.log('👨‍🏫 Tutor Dashboard - UPDATED with Course Management!');
-        console.log('📚 Create courses, manage them, and track students.');
+        console.log('👨‍🏫 Tutor Dashboard - UPDATED!');
+        console.log('🚀 Fast loading with localStorage cache!');
+        console.log('💬 Tutors can see and reply to comments!');
+        console.log('🏠 Live Class Room connected to bookings!');
     </script>
 
 </body>
