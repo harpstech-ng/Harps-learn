@@ -81,6 +81,16 @@
             font-size: 0.95rem;
             letter-spacing: 1px;
         }
+        #loadingScreen .dots {
+            display: inline-block;
+            animation: dots 1.5s steps(4, end) infinite;
+        }
+        @keyframes dots {
+            0% { content: ''; }
+            25% { content: '.'; }
+            50% { content: '..'; }
+            75% { content: '...'; }
+        }
         #loadingScreen.hidden {
             opacity: 0;
             pointer-events: none;
@@ -157,6 +167,12 @@
             margin-bottom: 0.8rem;
             box-shadow: 0 2px 8px rgba(0,0,0,0.06);
         }
+        .report-card .section-title {
+            font-weight: 700;
+            color: #1a1a2e;
+            font-size: 1rem;
+            margin-bottom: 0.5rem;
+        }
 
         .stats-row {
             display: grid;
@@ -192,9 +208,14 @@
         }
         .progress-item .bar .fill {
             height: 100%;
-            background: linear-gradient(90deg, #667eea, #764ba2);
             border-radius: 4px;
             transition: width 0.5s ease;
+        }
+        .progress-item .tutor-mark {
+            font-size: 0.75rem;
+            color: #667eea;
+            font-weight: 600;
+            margin-top: 0.2rem;
         }
 
         .strength-item {
@@ -237,6 +258,17 @@
         }
         .btn-success:hover { background: #16a34a; transform: translateY(-2px); }
 
+        .badge {
+            display: inline-block;
+            background: #22c55e;
+            color: white;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+        .badge-purple { background: #667eea; }
+
         .toast {
             position: fixed;
             bottom: 20px;
@@ -262,6 +294,26 @@
         .flex-between { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; }
         .mt-1 { margin-top: 0.5rem; }
 
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top: 2px solid #667eea;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 6px;
+            vertical-align: middle;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .empty-state {
+            text-align: center;
+            padding: 2rem;
+            color: #999;
+        }
+        .empty-state .icon { font-size: 3rem; display: block; margin-bottom: 0.5rem; }
+
         @media (max-width: 600px) {
             .navbar { padding: 0.4rem 0.8rem; }
             .navbar .logo { font-size: 1.1rem; }
@@ -273,30 +325,39 @@
 </head>
 <body>
 
-    <div class="navbar">
-        <div class="logo" onclick="window.location.href='parent-dashboard.html'">👪 Harps<span>Learn</span></div>
-        <button class="back-btn" onclick="window.location.href='parent-dashboard.html'">✕</button>
+    <!-- ===== LOADING SCREEN ===== -->
+    <div id="loadingScreen">
+        <div class="logo-text">👪 Harps<span>Learn</span></div>
+        <div class="spinner-container">
+            <div class="ring"></div>
+            <div class="ring"></div>
+            <div class="ring"></div>
+        </div>
+        <p>Loading reports<span class="dots">...</span></p>
     </div>
 
-    <div class="container">
-        <div class="page-header">
-            <h1>📊 Reports</h1>
-            <p>View detailed progress reports for your children.</p>
+    <!-- ===== MAIN CONTENT ===== -->
+    <div id="mainContent">
+        <div class="navbar">
+            <div class="logo" onclick="window.location.href='parent-dashboard.html'">👪 Harps<span>Learn</span></div>
+            <button class="back-btn" onclick="window.location.href='parent-dashboard.html'">✕</button>
         </div>
 
-        <div id="childSelector" class="child-selector">
-            <!-- Populated by JS -->
-        </div>
-
-        <div id="reportContent">
-            <div style="text-align:center;padding:2rem;color:#999;">
-                <span style="font-size:2rem;display:block;margin-bottom:0.5rem;">📊</span>
-                Select a child to view their report
+        <div class="container">
+            <div class="page-header">
+                <h1>📊 Reports</h1>
+                <p>View detailed progress reports for your children.</p>
             </div>
+
+            <div id="childSelector" class="child-selector"></div>
+            <div id="reportContent"></div>
         </div>
     </div>
 
     <script>
+        // ============================================================
+        // 🔥 FIREBASE CONFIG
+        // ============================================================
         const firebaseConfig = {
             apiKey: "AIzaSyDy-j3_iZwv7IE7HYHircFeEWGdoGizf5M",
             authDomain: "harpslearn.firebaseapp.com",
@@ -316,6 +377,9 @@
         let linkedChildren = [];
         let selectedChild = null;
 
+        // ============================================================
+        // 🛠️ UTILITY
+        // ============================================================
         function showToast(message, type = 'info') {
             const existing = document.querySelector('.toast');
             if (existing) existing.remove();
@@ -327,6 +391,7 @@
         }
 
         function timeAgo(date) {
+            if (!date) return 'N/A';
             const seconds = Math.floor((new Date() - date) / 1000);
             if (seconds < 60) return 'just now';
             const minutes = Math.floor(seconds / 60);
@@ -338,11 +403,24 @@
             return date.toLocaleDateString();
         }
 
+        function hideLoadingScreen() {
+            const ls = document.getElementById('loadingScreen');
+            const mc = document.getElementById('mainContent');
+            if (ls) ls.classList.add('hidden');
+            if (mc) {
+                mc.classList.add('visible');
+                mc.style.display = 'block';
+            }
+        }
+
+        // ============================================================
+        // 📥 LOAD REPORTS
+        // ============================================================
         async function loadReports() {
             try {
                 const user = auth.currentUser;
                 if (!user) {
-                    document.getElementById('loadingScreen').classList.add('hidden');
+                    hideLoadingScreen();
                     window.location.href = 'index.html';
                     return;
                 }
@@ -352,10 +430,10 @@
                 const userDoc = await db.collection('users').doc(user.uid).get();
                 userData = userDoc.data();
 
-                if (userData.role !== 'parent') {
+                if (!userData || userData.role !== 'parent') {
                     showToast('This page is for parents only', 'error');
                     setTimeout(() => window.location.href = 'index.html', 1500);
-                    document.getElementById('loadingScreen').classList.add('hidden');
+                    hideLoadingScreen();
                     return;
                 }
 
@@ -381,13 +459,13 @@
                 if (linkedChildren.length === 0) {
                     selector.innerHTML = '<div class="text-muted" style="padding:0.5rem 0;">No children linked yet</div>';
                     document.getElementById('reportContent').innerHTML = `
-                        <div style="text-align:center;padding:2rem;color:#999;">
-                            <span style="font-size:2rem;display:block;margin-bottom:0.5rem;">👨‍👧</span>
-                            <p>No children linked. Ask your child for their secret key.</p>
+                        <div class="empty-state">
+                            <span class="icon">👨‍👧</span>
+                            <p>No children linked yet.</p>
+                            <p style="font-size:0.8rem;">Ask your child for their Parent Key.</p>
                         </div>
                     `;
-                    document.getElementById('loadingScreen').classList.add('hidden');
-                    document.getElementById('mainContent').classList.add('visible');
+                    hideLoadingScreen();
                     return;
                 }
 
@@ -403,22 +481,23 @@
                     selectChild(linkedChildren[0].id);
                 }
 
-                document.getElementById('loadingScreen').classList.add('hidden');
-                document.getElementById('mainContent').classList.add('visible');
+                hideLoadingScreen();
 
             } catch (error) {
                 console.error('Error loading reports:', error);
                 showToast('Error loading reports', 'error');
-                document.getElementById('loadingScreen').classList.add('hidden');
-                document.getElementById('mainContent').classList.add('visible');
+                hideLoadingScreen();
             }
         }
 
+        // ============================================================
+        // 👨‍👧 SELECT CHILD
+        // ============================================================
         async function selectChild(childId) {
             try {
-                // Update active state
                 document.querySelectorAll('.child-btn').forEach(b => b.classList.remove('active'));
-                document.querySelector(`.child-btn[data-id="${childId}"]`)?.classList.add('active');
+                const btn = document.querySelector(`.child-btn[data-id="${childId}"]`);
+                if (btn) btn.classList.add('active');
 
                 const child = linkedChildren.find(c => c.id === childId);
                 if (!child) {
@@ -435,97 +514,234 @@
             }
         }
 
+        // ============================================================
+        // 📊 LOAD CHILD REPORT - ONLY REAL DATA, NO FAKE COURSES!
+        // ============================================================
         async function loadChildReport(child) {
             try {
                 const container = document.getElementById('reportContent');
+                container.innerHTML = `
+                    <div style="text-align:center;padding:2rem;color:#999;">
+                        <div class="spinner"></div>
+                        Loading report...
+                    </div>
+                `;
+
                 const childName = child.userData?.fullName || 'Child';
                 const examType = child.examType || 'WAEC';
                 const grade = child.gradeLevel || 'SS1';
                 const school = child.schoolName || 'Not specified';
 
-                // Get progress data
+                // ============================================================
+                // 1. GET REAL COURSES FROM studentProgress (ONLY ENROLLED COURSES)
+                // ============================================================
                 const progressSnapshot = await db.collection('studentProgress')
                     .where('studentId', '==', child.userId)
                     .get();
 
-                let progress = 0;
+                let totalProgress = 0;
                 let lessonsCompleted = 0;
                 let avgScore = 0;
-                let totalProgress = 0;
                 let count = 0;
+                let courses = [];
 
-                progressSnapshot.forEach(doc => {
+                for (const doc of progressSnapshot.docs) {
                     const data = doc.data();
                     totalProgress += data.progress || 0;
                     lessonsCompleted += data.lessonsCompleted || 0;
                     if (data.averageScore) avgScore += data.averageScore;
+                    if (data.overallTutorRating) avgScore += data.overallTutorRating;
                     count++;
-                });
+
+                    // Get course details from bootcampCourses
+                    if (data.courseId) {
+                        const courseDoc = await db.collection('bootcampCourses').doc(data.courseId).get();
+                        if (courseDoc.exists) {
+                            const courseData = courseDoc.data();
+                            courses.push({
+                                id: data.courseId,
+                                name: courseData.title || 'Course',
+                                icon: courseData.icon || '📚',
+                                exam: courseData.examType || 'General',
+                                lessons: courseData.totalLessons || 0,
+                                progress: data.progress || 0,
+                                overallTutorRating: data.overallTutorRating || 0,
+                                tutorFeedback: data.tutorFeedback || '',
+                                strengths: data.strengths || [],
+                                weaknesses: data.weaknesses || []
+                            });
+                        } else {
+                            // Course might be deleted, but still show progress
+                            courses.push({
+                                id: data.courseId,
+                                name: data.courseTitle || 'Course',
+                                icon: '📚',
+                                exam: 'General',
+                                lessons: data.totalLessons || 0,
+                                progress: data.progress || 0,
+                                overallTutorRating: data.overallTutorRating || 0,
+                                tutorFeedback: data.tutorFeedback || '',
+                                strengths: data.strengths || [],
+                                weaknesses: data.weaknesses || []
+                            });
+                        }
+                    }
+                }
 
                 const avgProgress = count > 0 ? Math.round(totalProgress / count) : 0;
                 const avgScoreFinal = count > 0 ? Math.round(avgScore / count) : 0;
 
-                // Get certificates
+                // ============================================================
+                // 2. GET CERTIFICATES
+                // ============================================================
                 const certSnapshot = await db.collection('certificates')
                     .where('studentId', '==', child.userId)
                     .get();
                 const certificates = certSnapshot.size || 0;
 
-                // Get courses
-                const courseSnapshot = await db.collection('courses')
+                // ============================================================
+                // 3. GET AI USAGE
+                // ============================================================
+                let aiUsage = null;
+                const aiSnapshot = await db.collection('aiUsage')
                     .where('studentId', '==', child.userId)
                     .get();
+                aiSnapshot.forEach(doc => { aiUsage = { id: doc.id, ...doc.data() }; });
 
-                const courses = [];
-                courseSnapshot.forEach(doc => {
-                    courses.push({ id: doc.id, ...doc.data() });
+                // ============================================================
+                // 4. GET TUTOR FEEDBACK
+                // ============================================================
+                const feedbackSnapshot = await db.collection('tutorFeedback')
+                    .where('studentId', '==', child.userId)
+                    .orderBy('createdAt', 'desc')
+                    .get();
+                const feedbacks = [];
+                feedbackSnapshot.forEach(doc => {
+                    feedbacks.push({ id: doc.id, ...doc.data() });
                 });
 
-                // If no courses, show default
-                if (courses.length === 0) {
-                    courses.push(
-                        { name: 'Mathematics', exam: 'WAEC Prep', icon: '📐', lessons: 12, progress: 0 },
-                        { name: 'English', exam: 'NECO Prep', icon: '📖', lessons: 10, progress: 0 }
-                    );
-                }
-
-                // Generate strengths and weaknesses
+                // ============================================================
+                // 5. GENERATE STRENGTHS & WEAKNESSES (from real data)
+                // ============================================================
                 const strongSubjects = courses.filter(c => (c.progress || 0) >= 70).map(c => c.name);
                 const weakSubjects = courses.filter(c => (c.progress || 0) < 50).map(c => c.name);
                 const mediumSubjects = courses.filter(c => (c.progress || 0) >= 50 && (c.progress || 0) < 70).map(c => c.name);
 
-                // Build courses HTML
+                // ============================================================
+                // 6. BUILD COURSES HTML (ONLY REAL COURSES)
+                // ============================================================
                 let coursesHtml = '';
-                for (const course of courses) {
-                    const progressVal = course.progress || 0;
-                    coursesHtml += `
-                        <div class="progress-item">
-                            <div class="subject-name">
-                                <span>${course.icon || '📚'} ${course.name}</span>
-                                <span>${progressVal}%</span>
+                if (courses.length === 0) {
+                    coursesHtml = `<div class="text-muted" style="padding:0.5rem 0;">No courses enrolled yet</div>`;
+                } else {
+                    for (const course of courses) {
+                        const progressVal = course.progress || 0;
+                        const color = progressVal >= 80 ? '#22c55e' : progressVal >= 50 ? '#f59e0b' : '#ef4444';
+                        const tutorMark = course.overallTutorRating ? `• 👨‍🏫 Tutor mark: ${course.overallTutorRating}%` : '';
+                        coursesHtml += `
+                            <div class="progress-item">
+                                <div class="subject-name">
+                                    <span>${course.icon || '📚'} ${course.name}</span>
+                                    <span style="color:${color};">${progressVal}%</span>
+                                </div>
+                                <div class="bar"><div class="fill" style="width:${progressVal}%;background:${color};"></div></div>
+                                <div class="tutor-mark">${course.lessons || 0} lessons • ${course.exam || 'General'} ${tutorMark}</div>
                             </div>
-                            <div class="bar"><div class="fill" style="width:${progressVal}%"></div></div>
-                        </div>
-                    `;
+                        `;
+                    }
                 }
 
+                // ============================================================
+                // 7. STRENGTHS & WEAKNESSES HTML
+                // ============================================================
                 const strengthsHtml = strongSubjects.map(s => `<span class="strength-item strong">✅ ${s}</span>`).join('');
                 const weaknessesHtml = weakSubjects.map(s => `<span class="strength-item weak">❌ ${s}</span>`).join('');
                 const mediumsHtml = mediumSubjects.map(s => `<span class="strength-item medium">📊 ${s}</span>`).join('');
 
+                // ============================================================
+                // 8. AI USAGE HTML
+                // ============================================================
+                let aiHtml = '';
+                if (aiUsage && aiUsage.totalQuestions > 0) {
+                    const topics = aiUsage.topics || {};
+                    const topicKeys = Object.keys(topics);
+                    let topicsHtml = '';
+                    if (topicKeys.length > 0) {
+                        topicsHtml = '<div style="margin-top:0.3rem;">';
+                        for (const key of topicKeys) {
+                            topicsHtml += `
+                                <span style="background:#f0f2f5;padding:2px 10px;border-radius:10px;font-size:0.7rem;margin-right:0.3rem;">
+                                    ${key}: ${topics[key]} questions
+                                </span>
+                            `;
+                        }
+                        topicsHtml += '</div>';
+                    }
+                    aiHtml = `
+                        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.6rem;margin-top:0.5rem;">
+                            <div class="stat-box">
+                                <div class="value" style="color:#8b5cf6;">${aiUsage.totalQuestions}</div>
+                                <div class="label">🤖 AI Questions</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="value" style="color:#8b5cf6;">${aiUsage.averageResponseQuality || 0}%</div>
+                                <div class="label">🎯 AI Quality</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="value" style="color:#8b5cf6;">${timeAgo(aiUsage.lastUsed?.toDate?.() || new Date())}</div>
+                                <div class="label">🕐 Last AI Use</div>
+                            </div>
+                        </div>
+                        ${topicsHtml}
+                    `;
+                } else {
+                    aiHtml = `<div class="text-muted">No AI usage data yet</div>`;
+                }
+
+                // ============================================================
+                // 9. TUTOR FEEDBACK HTML
+                // ============================================================
+                let feedbackHtml = '';
+                if (feedbacks.length > 0) {
+                    for (const fb of feedbacks.slice(0, 3)) {
+                        const date = fb.createdAt?.toDate?.() || new Date();
+                        feedbackHtml += `
+                            <div style="background:#f8f9fa;padding:0.6rem;border-radius:8px;margin-bottom:0.4rem;">
+                                <div class="flex-between">
+                                    <span style="font-weight:600;">👨‍🏫 ${fb.tutorName || 'Tutor'}</span>
+                                    <span style="font-weight:700;color:#22c55e;">${fb.score || 0}%</span>
+                                </div>
+                                <div style="font-size:0.7rem;color:#999;">📚 ${fb.subject || 'General'} • ${date.toLocaleDateString()}</div>
+                                <div style="font-size:0.85rem;color:#444;margin:0.2rem 0;">${fb.feedback || 'No feedback'}</div>
+                                ${fb.strengths?.length > 0 ? `<div style="font-size:0.7rem;color:#22c55e;">✅ ${fb.strengths.join(', ')}</div>` : ''}
+                                ${fb.weaknesses?.length > 0 ? `<div style="font-size:0.7rem;color:#ef4444;">⚠️ ${fb.weaknesses.join(', ')}</div>` : ''}
+                            </div>
+                        `;
+                    }
+                    if (feedbacks.length > 3) {
+                        feedbackHtml += `<div class="text-muted" style="font-size:0.7rem;">+ ${feedbacks.length - 3} more feedbacks</div>`;
+                    }
+                } else {
+                    feedbackHtml = `<div class="text-muted">No tutor feedback yet</div>`;
+                }
+
+                // ============================================================
+                // 10. BUILD THE FULL REPORT
+                // ============================================================
                 container.innerHTML = `
                     <div style="margin-bottom:1rem;">
-                        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;">
+                        <div class="flex-between">
                             <div>
                                 <h2 style="font-size:1.3rem;color:#1a1a2e;">${childName}</h2>
                                 <div style="color:#666;font-size:0.85rem;">📚 ${examType} • Grade ${grade} • 🏫 ${school}</div>
                             </div>
-                            <span class="badge" style="background:#667eea;font-size:0.8rem;padding:4px 12px;border-radius:12px;color:white;font-weight:600;">Active</span>
+                            <span class="badge badge-purple" style="font-size:0.8rem;padding:4px 12px;">${avgProgress}% Progress</span>
                         </div>
                     </div>
 
+                    <!-- Overview Stats -->
                     <div class="report-card">
-                        <div class="section-title" style="font-weight:700;color:#1a1a2e;font-size:1rem;margin-bottom:0.5rem;">📈 Performance Overview</div>
+                        <div class="section-title">📈 Performance Overview</div>
                         <div class="stats-row">
                             <div class="stat-box">
                                 <div class="value">${avgProgress}%</div>
@@ -550,19 +766,33 @@
                                 <div class="label">📝 Lessons Done</div>
                             </div>
                             <div class="stat-box">
-                                <div class="value">${linkedChildren.length}</div>
-                                <div class="label">👨‍👧 Children</div>
+                                <div class="value">${feedbacks.length}</div>
+                                <div class="label">📝 Tutor Feedback</div>
                             </div>
                         </div>
                     </div>
 
+                    <!-- Course Progress (REAL ONLY) -->
                     <div class="report-card">
-                        <div class="section-title" style="font-weight:700;color:#1a1a2e;font-size:1rem;margin-bottom:0.5rem;">📚 Course Progress</div>
+                        <div class="section-title">📚 Course Progress</div>
                         ${coursesHtml}
                     </div>
 
+                    <!-- AI Usage -->
                     <div class="report-card">
-                        <div class="section-title" style="font-weight:700;color:#1a1a2e;font-size:1rem;margin-bottom:0.5rem;">💪 Strengths & Weaknesses</div>
+                        <div class="section-title">🤖 AI Usage Analytics</div>
+                        ${aiHtml}
+                    </div>
+
+                    <!-- Tutor Feedback -->
+                    <div class="report-card">
+                        <div class="section-title">📝 Recent Tutor Feedback</div>
+                        ${feedbackHtml}
+                    </div>
+
+                    <!-- Strengths & Weaknesses -->
+                    <div class="report-card">
+                        <div class="section-title">💪 Strengths & Weaknesses</div>
                         <div style="margin:0.5rem 0;">
                             <strong>Strengths:</strong>
                             ${strengthsHtml || '<span class="text-muted">None identified yet</span>'}
@@ -577,19 +807,21 @@
                         </div>
                     </div>
 
+                    <!-- Recommendations -->
                     <div class="report-card">
-                        <div class="section-title" style="font-weight:700;color:#1a1a2e;font-size:1rem;margin-bottom:0.5rem;">📋 Recommendations</div>
-                        <ul style="padding-left:1.2rem;color:#555;line-height:1.8;">
-                            ${weakSubjects.length > 0 ? weakSubjects.map(s => `<li>Focus more on <strong>${s}</strong> - practice daily for 20 minutes</li>`).join('') : '<li>Great job! Keep up the excellent work! 🎉</li>'}
-                            ${mediumSubjects.length > 0 ? mediumSubjects.map(s => `<li>Review <strong>${s}</strong> weekly to strengthen your understanding</li>`).join('') : ''}
-                            <li>Maintain your momentum! Consistency is key 💪</li>
-                            ${avgScoreFinal < 60 ? '<li>Consider getting a tutor for extra support</li>' : '<li>You\'re doing well! Challenge yourself with advanced topics</li>'}
+                        <div class="section-title">💡 Recommendations</div>
+                        <ul style="padding-left:1.2rem;color:#555;line-height:2;">
+                            ${weakSubjects.length > 0 ? weakSubjects.map(s => `<li>🔴 Focus more on <strong>${s}</strong> - practice daily for 20 minutes</li>`).join('') : '<li>🎉 Great job! Keep up the excellent work!</li>'}
+                            ${mediumSubjects.length > 0 ? mediumSubjects.map(s => `<li>🟡 Review <strong>${s}</strong> weekly to strengthen your understanding</li>`).join('') : ''}
+                            ${avgScoreFinal < 60 ? '<li>📝 Consider getting a tutor for extra support</li>' : '<li>🚀 You\'re doing well! Challenge yourself with advanced topics</li>'}
+                            <li>💪 Maintain consistent daily practice</li>
                         </ul>
                     </div>
 
+                    <!-- Action Buttons -->
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.6rem;">
                         <button class="btn-primary" onclick="window.location.href='parent-tutors.html'">
-                            👨‍🏫 Get a Tutor
+                            👨‍🏫 Find a Tutor
                         </button>
                         <button class="btn-success" onclick="downloadReport('${child.id}')">
                             📄 Download Report
@@ -600,9 +832,18 @@
             } catch (error) {
                 console.error('Error loading child report:', error);
                 showToast('Error loading report', 'error');
+                document.getElementById('reportContent').innerHTML = `
+                    <div class="empty-state">
+                        <span class="icon">⚠️</span>
+                        <p>Error loading report. Please try again.</p>
+                    </div>
+                `;
             }
         }
 
+        // ============================================================
+        // 📄 DOWNLOAD REPORT
+        // ============================================================
         function downloadReport(childId) {
             showToast('📄 Report downloading...', 'success');
             setTimeout(() => {
@@ -610,16 +851,20 @@
             }, 1500);
         }
 
+        // ============================================================
+        // 🚀 INIT
+        // ============================================================
         auth.onAuthStateChanged(user => {
             if (!user) {
-                document.getElementById('loadingScreen').classList.add('hidden');
+                hideLoadingScreen();
                 window.location.href = 'index.html';
             } else {
                 loadReports();
             }
         });
 
-        console.log('📊 Parent Reports loaded!');
+        console.log('📊 Parent Reports - NO FAKE COURSES!');
+        console.log('✅ Only shows REAL courses from studentProgress.');
     </script>
 
 </body>
