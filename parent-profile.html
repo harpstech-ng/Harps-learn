@@ -65,6 +65,12 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.06);
             margin-bottom: 0.8rem;
         }
+        .profile-card .section-title {
+            font-weight: 700;
+            color: #1a1a2e;
+            font-size: 1rem;
+            margin-bottom: 0.5rem;
+        }
 
         .profile-header {
             display: flex;
@@ -74,8 +80,7 @@
             flex-wrap: wrap;
         }
         .profile-header .avatar {
-            width: 80px;
-            height: 80px;
+            width: 80px; height: 80px;
             border-radius: 50%;
             background: linear-gradient(135deg, #667eea, #764ba2);
             display: flex;
@@ -162,27 +167,48 @@
         }
         .btn-danger:hover { background: #dc2626; }
 
-        .secret-box {
-            background: #f8f9fa;
-            padding: 0.8rem;
-            border-radius: 10px;
+        .child-item {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            padding: 0.6rem 0;
+            border-bottom: 1px solid #f3f4f6;
+        }
+        .child-item:last-child { border-bottom: none; }
+        .child-item .c-avatar {
+            width: 44px; height: 44px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 1rem;
+            flex-shrink: 0;
+            object-fit: cover;
+            overflow: hidden;
+        }
+        .child-item .c-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .child-item .c-info { flex: 1; }
+        .child-item .c-info .c-name { font-weight: 600; color: #1a1a2e; }
+        .child-item .c-info .c-detail { font-size: 0.8rem; color: #666; }
+        .child-item .c-info .c-progress { font-size: 0.75rem; color: #667eea; font-weight: 600; }
+        .child-item .c-status {
+            font-size: 0.7rem;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-weight: 600;
+        }
+        .child-item .c-status.active { background: #dcfce7; color: #166534; }
+        .child-item .c-status.inactive { background: #fee2e2; color: #991b1b; }
+
+        .empty-state {
             text-align: center;
-            margin: 0.5rem 0;
-            border: 2px dashed #e5e7eb;
+            padding: 1rem;
+            color: #999;
         }
-        .secret-box code {
-            font-size: 1.1rem;
-            letter-spacing: 2px;
-            font-weight: bold;
-            color: #764ba2;
-            background: white;
-            padding: 0.4rem 1rem;
-            border-radius: 6px;
-            display: inline-block;
-            margin: 0.3rem 0;
-            border: 1px solid #e5e7eb;
-            word-break: break-all;
-        }
+        .empty-state .icon { font-size: 2rem; display: block; margin-bottom: 0.3rem; }
 
         .toast {
             position: fixed;
@@ -215,6 +241,7 @@
             .container { padding: 0.4rem; }
             .profile-header { flex-direction: column; text-align: center; }
             .profile-header .info { text-align: center; }
+            .child-item { flex-wrap: wrap; }
         }
     </style>
 </head>
@@ -228,9 +255,10 @@
     <div class="container">
         <div class="page-header">
             <h1>👤 My Profile</h1>
-            <p>Manage your personal information and preferences.</p>
+            <p>Manage your personal information and see your linked children.</p>
         </div>
 
+        <!-- Profile Info -->
         <div class="profile-card">
             <div class="profile-header">
                 <div class="avatar" id="profileAvatar" onclick="uploadProfilePic()">👤</div>
@@ -259,22 +287,32 @@
             </form>
         </div>
 
-        <!-- Parent Secret Key -->
+        <!-- Linked Children -->
         <div class="profile-card">
-            <h3 style="font-size:1rem;margin-bottom:0.5rem;">🔐 Parent Secret Key</h3>
-            <p class="text-muted">Share this key with your child to link their account.</p>
-            <div class="secret-box">
-                <code id="parentKeyDisplay">Loading...</code>
+            <div class="section-title">👨‍👧 My Children</div>
+            <div id="childrenList">
+                <div class="empty-state">
+                    <span class="icon">👶</span>
+                    <p>No children linked yet.</p>
+                    <p style="font-size:0.8rem;">Ask your child for their Parent Key.</p>
+                </div>
             </div>
-            <div style="display:flex;gap:0.5rem;">
-                <button onclick="copyParentKey()" class="btn-primary" style="flex:1;padding:0.4rem;font-size:0.8rem;">📋 Copy</button>
-                <button onclick="generateNewParentKey()" class="btn-primary" style="flex:1;padding:0.4rem;font-size:0.8rem;background:#f59e0b;">🔄 New Key</button>
-            </div>
+        </div>
+
+        <!-- How to Link -->
+        <div class="profile-card" style="background:#f0f4ff;border:2px solid #dbeafe;">
+            <div class="section-title">💡 How to Link a Child</div>
+            <ol style="padding-left:1.2rem;color:#444;line-height:2;">
+                <li>👨‍👧 Ask your child for their <strong>Parent Key</strong></li>
+                <li>🔗 Go to your <strong>Dashboard</strong> and click <strong>"Link Your Child"</strong></li>
+                <li>📝 Enter the 16-character key</li>
+                <li>✅ Your child will be linked automatically!</li>
+            </ol>
         </div>
 
         <!-- Danger Zone -->
         <div class="profile-card" style="border:2px solid #ef4444;">
-            <h3 style="font-size:1rem;color:#ef4444;margin-bottom:0.5rem;">⚠️ Danger Zone</h3>
+            <div class="section-title" style="color:#ef4444;">⚠️ Danger Zone</div>
             <button class="btn-danger" onclick="deleteAccount()">🗑️ Delete Account</button>
         </div>
     </div>
@@ -301,6 +339,7 @@
 
         let currentUser = null;
         let userData = null;
+        let linkedChildren = [];
 
         function showToast(message, type = 'info') {
             const existing = document.querySelector('.toast');
@@ -312,13 +351,17 @@
             setTimeout(() => { toast.remove(); }, 4000);
         }
 
-        function generateKey() {
-            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-            let key = '';
-            for (let i = 0; i < 16; i++) {
-                key += chars.charAt(Math.floor(Math.random() * chars.length));
-            }
-            return key;
+        function timeAgo(date) {
+            if (!date) return 'N/A';
+            const seconds = Math.floor((new Date() - date) / 1000);
+            if (seconds < 60) return 'just now';
+            const minutes = Math.floor(seconds / 60);
+            if (minutes < 60) return minutes + 'm ago';
+            const hours = Math.floor(minutes / 60);
+            if (hours < 24) return hours + 'h ago';
+            const days = Math.floor(hours / 24);
+            if (days < 7) return days + 'd ago';
+            return date.toLocaleDateString();
         }
 
         async function loadProfile() {
@@ -351,20 +394,91 @@
                     document.getElementById('profileAvatar').innerHTML = `<img src="${userData.profilePic}" alt="Profile" />`;
                 }
 
-                const parentDoc = await db.collection('parents').doc(user.uid).get();
-                const parentData = parentDoc.data();
-                if (parentData) {
-                    const key = parentData.secretKey || generateKey();
-                    document.getElementById('parentKeyDisplay').textContent = key;
-                    if (!parentData.secretKey) {
-                        await db.collection('parents').doc(user.uid).update({ secretKey: key });
-                    }
-                }
+                // Load linked children
+                await loadLinkedChildren(user.uid);
 
             } catch (error) {
                 console.error('Error loading profile:', error);
                 showToast('Error loading profile', 'error');
             }
+        }
+
+        async function loadLinkedChildren(parentId) {
+            try {
+                const snapshot = await db.collection('students')
+                    .where('parentId', '==', parentId)
+                    .get();
+
+                linkedChildren = [];
+                for (const doc of snapshot.docs) {
+                    const data = doc.data();
+                    const userDoc = await db.collection('users').doc(data.userId).get();
+                    const userData = userDoc.exists ? userDoc.data() : {};
+                    
+                    let progress = 0;
+                    const progressSnapshot = await db.collection('studentProgress')
+                        .where('studentId', '==', data.userId)
+                        .get();
+                    progressSnapshot.forEach(pDoc => {
+                        progress = Math.max(progress, pDoc.data().progress || 0);
+                    });
+
+                    linkedChildren.push({
+                        id: doc.id,
+                        userId: data.userId,
+                        name: userData.fullName || 'Child',
+                        profilePic: userData.profilePic || '',
+                        examType: data.examType || 'WAEC',
+                        gradeLevel: data.gradeLevel || 'SS1',
+                        schoolName: data.schoolName || '',
+                        progress: progress,
+                        linkedAt: data.linkedAt?.toDate?.() || new Date()
+                    });
+                }
+
+                renderChildren(linkedChildren);
+
+            } catch (error) {
+                console.error('Error loading children:', error);
+            }
+        }
+
+        function renderChildren(children) {
+            const container = document.getElementById('childrenList');
+
+            if (children.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <span class="icon">👶</span>
+                        <p>No children linked yet.</p>
+                        <p style="font-size:0.8rem;">Ask your child for their Parent Key.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '';
+            for (const child of children) {
+                const initial = child.name.charAt(0).toUpperCase();
+                const isActive = child.progress > 0;
+                const statusClass = isActive ? 'active' : 'inactive';
+                const statusLabel = isActive ? '🟢 Active' : '🔴 Inactive';
+
+                html += `
+                    <div class="child-item">
+                        <div class="c-avatar">
+                            ${child.profilePic ? `<img src="${child.profilePic}" alt="${child.name}" />` : initial}
+                        </div>
+                        <div class="c-info">
+                            <div class="c-name">${child.name}</div>
+                            <div class="c-detail">📚 ${child.examType} • Grade ${child.gradeLevel} ${child.schoolName ? '• 🏫 ' + child.schoolName : ''}</div>
+                            <div class="c-progress">📊 ${child.progress}% progress</div>
+                        </div>
+                        <span class="c-status ${statusClass}">${statusLabel}</span>
+                    </div>
+                `;
+            }
+            container.innerHTML = html;
         }
 
         function uploadProfilePic() {
@@ -444,38 +558,6 @@
             }
         });
 
-        function copyParentKey() {
-            const key = document.getElementById('parentKeyDisplay').textContent;
-            navigator.clipboard.writeText(key).then(() => {
-                showToast('📋 Key copied!', 'success');
-            }).catch(() => {
-                const input = document.createElement('input');
-                input.value = key;
-                document.body.appendChild(input);
-                input.select();
-                document.execCommand('copy');
-                document.body.removeChild(input);
-                showToast('📋 Key copied!', 'success');
-            });
-        }
-
-        async function generateNewParentKey() {
-            try {
-                const user = auth.currentUser;
-                if (!user) return;
-
-                const newKey = generateKey();
-                await db.collection('parents').doc(user.uid).update({
-                    secretKey: newKey
-                });
-
-                document.getElementById('parentKeyDisplay').textContent = newKey;
-                showToast('🔑 New key generated!', 'success');
-            } catch (error) {
-                showToast('Error generating key', 'error');
-            }
-        }
-
         function deleteAccount() {
             if (!confirm('⚠️ Are you sure you want to delete your account? This action cannot be undone!')) return;
             if (!confirm('All your data will be permanently deleted. Are you sure?')) return;
@@ -488,6 +570,7 @@
         });
 
         console.log('👤 Parent Profile loaded!');
+        console.log('🎯 Simplified: Parents link by entering their child\'s key.');
     </script>
 
 </body>
