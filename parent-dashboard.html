@@ -665,6 +665,10 @@
         }
         .badge-warning { background: #f59e0b; }
         .badge-purple { background: #667eea; }
+        .badge-pending { background: #fef3c7; color: #92400e; }
+        .badge-approved { background: #dcfce7; color: #166534; }
+        .badge-rejected { background: #fee2e2; color: #991b1b; }
+
         .text-muted { color: #666; font-size: 0.85rem; }
         .flex-between { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; }
         .mt-1 { margin-top: 0.5rem; }
@@ -723,6 +727,82 @@
         }
         .modal-overlay .modal .modal-close:hover { color: #333; }
 
+        /* ===== CHILD POSTS ===== */
+        .child-post-item {
+            background: white;
+            border-radius: 14px;
+            padding: 1rem;
+            margin-bottom: 0.8rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            border-left: 4px solid #667eea;
+            transition: all 0.3s ease;
+        }
+        .child-post-item:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.1); }
+        .child-post-item .post-header {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            margin-bottom: 0.3rem;
+        }
+        .child-post-item .post-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 0.9rem;
+            object-fit: cover;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+        .child-post-item .post-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .child-post-item .post-user-name { font-weight: 600; color: #1a1a2e; font-size: 0.9rem; }
+        .child-post-item .post-time { font-size: 0.7rem; color: #999; }
+        .child-post-item .post-content { color: #333; font-size: 0.9rem; line-height: 1.5; margin: 0.3rem 0; }
+        .child-post-item .post-image {
+            width: 100%;
+            max-height: 250px;
+            object-fit: cover;
+            border-radius: 10px;
+            margin: 0.3rem 0;
+            cursor: pointer;
+        }
+        .child-post-item .post-status {
+            display: inline-block;
+            font-size: 0.65rem;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-weight: 600;
+        }
+        .child-post-item .post-status.approved { background: #dcfce7; color: #166534; }
+        .child-post-item .post-status.pending { background: #fef3c7; color: #92400e; }
+        .child-post-item .post-status.rejected { background: #fee2e2; color: #991b1b; }
+
+        .child-post-item .post-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.4rem;
+            flex-wrap: wrap;
+        }
+        .child-post-item .post-actions button {
+            padding: 4px 14px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .child-post-item .post-actions .btn-view {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+        .child-post-item .post-actions .btn-view:hover { transform: scale(1.05); }
+
         @media (max-width: 600px) {
             .navbar { padding: 0.4rem 0.8rem; }
             .navbar .logo { font-size: 1.1rem; }
@@ -733,6 +813,7 @@
             .welcome-banner h2 { font-size: 1.1rem; }
             #lottie-container { width: 100px; height: 100px; }
             #loadingScreen .logo-text { font-size: 2rem; }
+            .child-post-item .post-image { max-height: 180px; }
         }
 
         .sidebar::-webkit-scrollbar, .notif-modal::-webkit-scrollbar, .modal-overlay .modal::-webkit-scrollbar { width: 4px; }
@@ -904,6 +985,17 @@
                     <div class="text-muted" style="padding:1rem 0;text-align:center;">
                         📭 No children linked yet. Ask your child for their secret key.
                     </div>
+                </div>
+            </div>
+
+            <!-- ===== NEW: YOUR CHILDREN'S POSTS ===== -->
+            <div id="childPostsSection" class="post-card">
+                <div class="flex-between">
+                    <h3 style="font-size:1rem;">📝 Your Children's Posts</h3>
+                    <span class="badge badge-purple" id="childPostCount">0</span>
+                </div>
+                <div id="childPostsList">
+                    <div class="text-muted" style="padding:1rem 0;text-align:center;">📭 No posts from your children yet.</div>
                 </div>
             </div>
 
@@ -1113,6 +1205,8 @@
         let userData = null;
         let parentData = null;
         let linkedChildren = [];
+        let childUserIds = [];
+        let childPosts = [];
         let notifications = [];
         let messages = [];
         let moderationPostData = null;
@@ -1217,51 +1311,154 @@
                     showToast('No post to view', 'warning');
                     return;
                 }
-
-                const post = moderationPostData;
-                const content = post.content || 'No content';
-                const image = post.image ? `<img src="${post.image}" style="width:100%;border-radius:10px;margin-top:0.5rem;max-height:300px;object-fit:cover;" />` : '';
-                const userName = post.userName || 'Child';
-                const status = post.moderationStatus || 'pending';
-                const reason = post.moderationReason || 'No reason provided';
-                const time = post.createdAt?.toDate?.() || new Date();
-
-                const modalContent = document.getElementById('tutorProfileContent');
-                modalContent.innerHTML = `
-                    <div style="padding:0.5rem 0;">
-                        <div style="display:flex;gap:0.6rem;align-items:center;margin-bottom:0.5rem;">
-                            <div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#667eea,#764ba2);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:1rem;">
-                                ${post.userAvatar ? `<img src="${post.userAvatar}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;" />` : post.userName?.charAt(0).toUpperCase() || '👤'}
-                            </div>
-                            <div>
-                                <div style="font-weight:600;color:#1a1a2e;">${userName}</div>
-                                <div style="font-size:0.7rem;color:#999;">${timeAgo(time)}</div>
-                            </div>
-                        </div>
-                        <div style="padding:0.5rem;background:#f8f9fa;border-radius:8px;margin:0.5rem 0;">
-                            <div style="font-size:0.7rem;color:#666;">Status: <span style="font-weight:600;color:${status === 'approved' ? '#22c55e' : status === 'rejected' ? '#ef4444' : '#f59e0b'};">${status.toUpperCase()}</span></div>
-                            ${status === 'rejected' ? `<div style="font-size:0.85rem;color:#ef4444;margin-top:0.2rem;">❌ Reason: ${reason}</div>` : ''}
-                        </div>
-                        <div style="font-size:0.95rem;color:#333;line-height:1.6;">${content}</div>
-                        ${image}
-                        <div style="margin-top:1rem;display:flex;gap:0.5rem;">
-                            <button onclick="closeTutorProfile()" style="flex:1;padding:0.6rem;background:#667eea;color:white;border:none;border-radius:10px;font-weight:600;cursor:pointer;">Close</button>
-                            ${status === 'rejected' ? `<button onclick="window.location.href='parent-messages.html'" style="flex:1;padding:0.6rem;background:#22c55e;color:white;border:none;border-radius:10px;font-weight:600;cursor:pointer;">💬 Message Tutor</button>` : ''}
-                        </div>
-                    </div>
-                `;
-                document.getElementById('tutorProfileModal').classList.add('active');
-                document.body.style.overflow = 'hidden';
-
+                showPostInModal(moderationPostData);
             } catch (error) {
                 console.error('Error opening moderation post:', error);
                 showToast('Error loading post', 'error');
             }
         }
 
+        // ============================================================
+        // 👁️ VIEW ANY POST IN MODAL
+        // ============================================================
+        function showPostInModal(post) {
+            const content = post.content || 'No content';
+            const image = post.image ? `<img src="${post.image}" style="width:100%;border-radius:10px;margin-top:0.5rem;max-height:300px;object-fit:cover;" />` : '';
+            const userName = post.userName || 'Child';
+            const status = post.moderationStatus || 'pending';
+            const reason = post.moderationReason || 'No reason provided';
+            const time = post.createdAt?.toDate?.() || new Date();
+
+            const modalContent = document.getElementById('tutorProfileContent');
+            modalContent.innerHTML = `
+                <div style="padding:0.5rem 0;">
+                    <div style="display:flex;gap:0.6rem;align-items:center;margin-bottom:0.5rem;">
+                        <div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#667eea,#764ba2);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:1rem;">
+                            ${post.userAvatar ? `<img src="${post.userAvatar}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;" />` : post.userName?.charAt(0).toUpperCase() || '👤'}
+                        </div>
+                        <div>
+                            <div style="font-weight:600;color:#1a1a2e;">${userName}</div>
+                            <div style="font-size:0.7rem;color:#999;">${timeAgo(time)}</div>
+                        </div>
+                    </div>
+                    <div style="padding:0.5rem;background:#f8f9fa;border-radius:8px;margin:0.5rem 0;">
+                        <div style="font-size:0.7rem;color:#666;">Status: <span style="font-weight:600;color:${status === 'approved' ? '#22c55e' : status === 'rejected' ? '#ef4444' : '#f59e0b'};">${status.toUpperCase()}</span></div>
+                        ${status === 'rejected' ? `<div style="font-size:0.85rem;color:#ef4444;margin-top:0.2rem;">❌ Reason: ${reason}</div>` : ''}
+                    </div>
+                    <div style="font-size:0.95rem;color:#333;line-height:1.6;">${content}</div>
+                    ${image}
+                    <div style="margin-top:1rem;display:flex;gap:0.5rem;">
+                        <button onclick="closeTutorProfile()" style="flex:1;padding:0.6rem;background:#667eea;color:white;border:none;border-radius:10px;font-weight:600;cursor:pointer;">Close</button>
+                    </div>
+                </div>
+            `;
+            document.getElementById('tutorProfileModal').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
         function closeTutorProfile() {
             document.getElementById('tutorProfileModal').classList.remove('active');
             document.body.style.overflow = '';
+        }
+
+        // ============================================================
+        // 📝 LOAD CHILD POSTS
+        // ============================================================
+        async function loadChildPosts() {
+            try {
+                const user = auth.currentUser;
+                if (!user) return;
+
+                if (childUserIds.length === 0) {
+                    document.getElementById('childPostsList').innerHTML = `
+                        <div class="text-muted" style="padding:1rem 0;text-align:center;">📭 No children linked yet.</div>
+                    `;
+                    document.getElementById('childPostCount').textContent = '0';
+                    return;
+                }
+
+                // Fetch posts from all linked children
+                const allPosts = [];
+                for (const childId of childUserIds) {
+                    const snapshot = await db.collection('posts')
+                        .where('userId', '==', childId)
+                        .orderBy('createdAt', 'desc')
+                        .get();
+
+                    snapshot.forEach(doc => {
+                        allPosts.push({ id: doc.id, ...doc.data() });
+                    });
+                }
+
+                // Sort by createdAt descending
+                allPosts.sort((a, b) => {
+                    const dateA = a.createdAt?.toDate?.() || new Date(0);
+                    const dateB = b.createdAt?.toDate?.() || new Date(0);
+                    return dateB - dateA;
+                });
+
+                childPosts = allPosts;
+                document.getElementById('childPostCount').textContent = childPosts.length;
+
+                renderChildPosts(childPosts);
+
+            } catch (error) {
+                console.error('Error loading child posts:', error);
+                document.getElementById('childPostsList').innerHTML = `
+                    <div class="text-muted" style="padding:1rem 0;text-align:center;">⚠️ Error loading posts.</div>
+                `;
+            }
+        }
+
+        function renderChildPosts(posts) {
+            const container = document.getElementById('childPostsList');
+
+            if (posts.length === 0) {
+                container.innerHTML = `
+                    <div class="text-muted" style="padding:1rem 0;text-align:center;">📭 No posts from your children yet.</div>
+                `;
+                return;
+            }
+
+            let html = '';
+            for (const post of posts) {
+                const userName = post.userName || 'Child';
+                const avatar = post.userAvatar || userName.charAt(0).toUpperCase();
+                const time = post.createdAt?.toDate?.() || new Date();
+                const status = post.moderationStatus || 'pending';
+                const content = post.content || '';
+                const image = post.image || '';
+
+                // Status badge
+                let statusBadge = '';
+                if (status === 'approved') {
+                    statusBadge = `<span class="post-status approved">✅ Approved</span>`;
+                } else if (status === 'rejected') {
+                    statusBadge = `<span class="post-status rejected">❌ Rejected</span>`;
+                } else {
+                    statusBadge = `<span class="post-status pending">⏳ Pending</span>`;
+                }
+
+                html += `
+                    <div class="child-post-item">
+                        <div class="post-header">
+                            <div class="post-avatar">
+                                ${post.userAvatar ? `<img src="${post.userAvatar}" alt="${userName}" />` : avatar}
+                            </div>
+                            <div>
+                                <div class="post-user-name">${userName}</div>
+                                <div class="post-time">${timeAgo(time)} ${statusBadge}</div>
+                            </div>
+                        </div>
+                        ${content ? `<div class="post-content">${content}</div>` : ''}
+                        ${image ? `<img src="${image}" class="post-image" onclick="window.open('${image}','_blank')" />` : ''}
+                        <div class="post-actions">
+                            <button class="btn-view" onclick="showPostInModal(${JSON.stringify(post).replace(/"/g, '&quot;')})">👁️ View Full</button>
+                        </div>
+                    </div>
+                `;
+            }
+            container.innerHTML = html;
         }
 
         // ============================================================
@@ -1447,6 +1644,9 @@
                 updateProgress(50, '👨‍👧 Loading children...');
                 await loadLinkedChildren(user.uid);
 
+                updateProgress(70, '📝 Loading children posts...');
+                await loadChildPosts();
+
                 updateProgress(75, '📬 Loading notifications...');
                 await loadNotifications();
                 await loadMessages();
@@ -1477,6 +1677,8 @@
                     .get();
 
                 linkedChildren = [];
+                childUserIds = [];
+
                 for (const doc of snapshot.docs) {
                     const data = doc.data();
                     const userDoc = await db.collection('users').doc(data.userId).get();
@@ -1515,6 +1717,8 @@
                         certificates: certificates,
                         tutorRating: tutorRating
                     });
+
+                    childUserIds.push(data.userId);
                 }
 
                 document.getElementById('childrenCount').textContent = linkedChildren.length;
@@ -1671,7 +1875,6 @@
                         linkedAt: firebase.firestore.FieldValue.serverTimestamp()
                     });
 
-                    // Send notification to STUDENT that parent linked
                     await db.collection('notifications').add({
                         userId: studentData.userId,
                         title: '👨‍👧 Parent Linked!',
@@ -1691,6 +1894,7 @@
                     showToast('✅ Child linked successfully! 🎉', 'success');
                     document.getElementById('secretKeyInput').value = '';
                     await loadLinkedChildren(user.uid);
+                    await loadChildPosts();
                 } else {
                     showToast('❌ Could not link child. Please contact support.', 'error');
                 }
@@ -1754,21 +1958,19 @@
                 if (!skipped) {
                     loadParentDashboard();
                 } else {
-                    // Already loaded, refresh in background
                     loadParentDashboard();
                 }
                 setInterval(loadNotifications, 30000);
                 setInterval(() => loadLinkedChildren(user.uid), 60000);
                 setInterval(loadMessages, 30000);
+                setInterval(loadChildPosts, 60000);
             }
         });
 
         console.log('👪 Parent Dashboard - COMPLETE!');
-        console.log('✅ Animated loading screen with skip on subsequent visits');
-        console.log('🔔 All notifications working: booking, confirmation, moderation, feedback');
-        console.log('👨‍👧 Real child progress from Firebase');
-        console.log('📊 Tutor feedback and marks visible');
-        console.log('🎨 Particles + Lottie animation on loading');
+        console.log('✅ Parents can now see ALL posts from their children!');
+        console.log('📝 Posts show content, images, and status.');
+        console.log('🔔 Moderation alert still works for flagged posts.');
     </script>
 
 </body>
