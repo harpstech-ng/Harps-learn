@@ -71,7 +71,6 @@
             padding: 0.8rem;
         }
 
-        /* ===== VIDEO SECTION ===== */
         .video-section {
             flex: 2;
             display: flex;
@@ -118,17 +117,7 @@
             border-radius: 8px;
             font-size: 0.7rem;
         }
-        .video-box .mute-indicator {
-            position: absolute;
-            top: 8px;
-            right: 8px;
-            background: rgba(0,0,0,0.6);
-            padding: 2px 8px;
-            border-radius: 8px;
-            font-size: 0.7rem;
-        }
 
-        /* ===== SIDEBAR (Chat + Whiteboard) ===== */
         .sidebar {
             flex: 1;
             display: flex;
@@ -171,7 +160,6 @@
         .sidebar .tab-content::-webkit-scrollbar { width: 4px; }
         .sidebar .tab-content::-webkit-scrollbar-thumb { background: rgba(167,139,250,0.3); border-radius: 4px; }
 
-        /* Chat */
         .chat-messages {
             height: 100%;
             overflow-y: auto;
@@ -226,7 +214,6 @@
         }
         .chat-input button:hover { transform: scale(1.02); }
 
-        /* Whiteboard */
         .whiteboard-container {
             height: 100%;
             display: flex;
@@ -288,6 +275,88 @@
             to { transform: translateX(-50%) translateY(0); opacity: 1; }
         }
 
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top: 2px solid white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 6px;
+            vertical-align: middle;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Mark Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 6000;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal-overlay .modal {
+            background: #1a1a2e;
+            border-radius: 20px;
+            padding: 2rem;
+            max-width: 500px;
+            width: 100%;
+            border: 1px solid rgba(255,255,255,0.06);
+            animation: slideUp 0.3s ease;
+        }
+        @keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .modal-overlay .modal h3 { font-size: 1.3rem; color: #fff; margin-bottom: 1rem; }
+        .modal-overlay .modal .form-group { margin-bottom: 1rem; }
+        .modal-overlay .modal .form-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.3rem;
+            color: rgba(255,255,255,0.7);
+            font-size: 0.9rem;
+        }
+        .modal-overlay .modal .form-group input,
+        .modal-overlay .modal .form-group textarea,
+        .modal-overlay .modal .form-group select {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 10px;
+            font-size: 0.95rem;
+            font-family: inherit;
+            background: rgba(255,255,255,0.05);
+            color: #fff;
+        }
+        .modal-overlay .modal .form-group input:focus,
+        .modal-overlay .modal .form-group textarea:focus,
+        .modal-overlay .modal .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .modal-overlay .modal .form-group textarea { min-height: 80px; resize: vertical; }
+        .modal-overlay .modal .modal-actions { display: flex; gap: 0.5rem; margin-top: 1rem; }
+        .modal-overlay .modal .modal-actions button {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .modal-overlay .modal .modal-actions .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+        .modal-overlay .modal .modal-actions .btn-secondary {
+            background: rgba(255,255,255,0.06);
+            color: rgba(255,255,255,0.6);
+        }
+
         @media (max-width: 768px) {
             .container { flex-direction: column; height: auto; }
             .video-grid { grid-template-columns: 1fr; min-height: 200px; }
@@ -318,15 +387,15 @@
             <div class="video-grid">
                 <div class="video-box" id="localVideoBox">
                     <video id="localVideo" autoplay muted playsinline></video>
-                    <div class="label">📷 You (Tutor)</div>
+                    <div class="label">📷 You</div>
                 </div>
                 <div class="video-box" id="remoteVideoBox">
                     <video id="remoteVideo" autoplay playsinline></video>
                     <div class="placeholder">
                         <span class="icon">👤</span>
-                        <p>Waiting for student...</p>
+                        <p>Waiting for other participant...</p>
                     </div>
-                    <div class="label" id="remoteLabel">👤 Student</div>
+                    <div class="label" id="remoteLabel">👤 Other</div>
                 </div>
             </div>
             <div style="display:flex;gap:0.5rem;justify-content:center;flex-wrap:wrap;">
@@ -336,7 +405,7 @@
             </div>
         </div>
 
-        <!-- Sidebar (Chat + Whiteboard) -->
+        <!-- Sidebar -->
         <div class="sidebar">
             <div class="tab-bar">
                 <button class="active" data-tab="chat" onclick="switchTab('chat')">💬 Chat</button>
@@ -374,6 +443,35 @@
         </div>
     </div>
 
+    <!-- ===== MARK STUDENT MODAL ===== -->
+    <div class="modal-overlay" id="markModal">
+        <div class="modal">
+            <h3>📝 Mark Student Progress</h3>
+            <form id="markForm">
+                <div class="form-group">
+                    <label>Score (0-100)</label>
+                    <input type="number" id="markScore" placeholder="e.g., 85" min="0" max="100" required />
+                </div>
+                <div class="form-group">
+                    <label>Feedback</label>
+                    <textarea id="markFeedback" placeholder="Write your feedback for the student..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Strengths (comma separated)</label>
+                    <input type="text" id="markStrengths" placeholder="e.g., Algebra, Problem Solving" />
+                </div>
+                <div class="form-group">
+                    <label>Areas to Improve (comma separated)</label>
+                    <input type="text" id="markWeaknesses" placeholder="e.g., Word Problems, Speed" />
+                </div>
+                <div class="modal-actions">
+                    <button type="submit" class="btn-primary">✅ Submit & End Class</button>
+                    <button type="button" class="btn-secondary" onclick="closeMarkModal()">Skip</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script>
         // ============================================================
         // 🔥 FIREBASE CONFIG
@@ -406,6 +504,13 @@
         let isAudioMuted = false;
         let isVideoOff = false;
         let localStream = null;
+        let bookingData = null;
+        let studentId = null;
+        let studentName = 'Student';
+        let tutorId = null;
+        let tutorName = 'Tutor';
+        let subject = 'General';
+        let parentId = null;
 
         // ============================================================
         // 🛠️ UTILITY
@@ -424,6 +529,19 @@
             const m = String(Math.floor(seconds / 60)).padStart(2, '0');
             const s = String(seconds % 60).padStart(2, '0');
             return `${m}:${s}`;
+        }
+
+        function timeAgo(date) {
+            if (!date) return 'N/A';
+            const seconds = Math.floor((new Date() - date) / 1000);
+            if (seconds < 60) return 'just now';
+            const minutes = Math.floor(seconds / 60);
+            if (minutes < 60) return minutes + 'm ago';
+            const hours = Math.floor(minutes / 60);
+            if (hours < 24) return hours + 'h ago';
+            const days = Math.floor(hours / 24);
+            if (days < 7) return days + 'd ago';
+            return date.toLocaleDateString();
         }
 
         // ============================================================
@@ -445,7 +563,7 @@
         }
 
         // ============================================================
-        // 📹 WEBRTC - VIDEO/AUDIO
+        // 📹 WEBRTC
         // ============================================================
         async function initWebRTC() {
             try {
@@ -455,28 +573,18 @@
                 });
 
                 localStream = stream;
-                const localVideo = document.getElementById('localVideo');
-                localVideo.srcObject = stream;
+                document.getElementById('localVideo').srcObject = stream;
 
-                // For now, simulate remote video (in production, use WebRTC signaling)
-                // This is a placeholder for the live demo
+                // Simulate remote
                 document.getElementById('remoteVideoBox').querySelector('.placeholder').style.display = 'none';
-                document.getElementById('remoteLabel').textContent = '👤 Student (Connected)';
+                document.getElementById('remoteLabel').textContent = `👤 ${userRole === 'tutor' ? 'Student' : 'Tutor'} (Connected)`;
 
                 showToast('📹 Camera and microphone connected!', 'success');
                 startTimer();
 
             } catch (error) {
                 console.error('WebRTC error:', error);
-                showToast('⚠️ Could not access camera/microphone. Please allow permissions.', 'warning');
-                // Fallback: show placeholder
-                document.getElementById('localVideoBox').querySelector('.placeholder')?.remove();
-                document.getElementById('localVideoBox').innerHTML = `
-                    <div style="display:flex;align-items:center;justify-content:center;height:100%;flex-direction:column;color:rgba(255,255,255,0.3);">
-                        <span style="font-size:3rem;">📷</span>
-                        <p>Camera not available</p>
-                    </div>
-                `;
+                showToast('⚠️ Could not access camera/microphone.', 'warning');
             }
         }
 
@@ -497,20 +605,14 @@
         async function shareScreen() {
             try {
                 const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-                // Replace local video with screen share
-                const localVideo = document.getElementById('localVideo');
-                localVideo.srcObject = screenStream;
+                document.getElementById('localVideo').srcObject = screenStream;
                 showToast('🖥️ Screen sharing started!', 'success');
-
                 screenStream.getVideoTracks()[0].onended = () => {
-                    // Restore camera when screen share ends
-                    if (localStream) {
-                        localVideo.srcObject = localStream;
-                    }
+                    if (localStream) document.getElementById('localVideo').srcObject = localStream;
                     showToast('🖥️ Screen sharing ended', 'info');
                 };
             } catch (error) {
-                showToast('⚠️ Screen sharing cancelled or not supported', 'warning');
+                showToast('⚠️ Screen sharing cancelled', 'warning');
             }
         }
 
@@ -597,8 +699,6 @@
             const container = document.getElementById('whiteboardTab');
             const canvasEl = document.getElementById('whiteboardCanvas');
 
-            // Set canvas size
-            const rect = container.getBoundingClientRect();
             const height = container.clientHeight - 60;
             canvasEl.width = container.clientWidth - 20;
             canvasEl.height = Math.max(height, 200);
@@ -610,27 +710,21 @@
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';
 
-            // Mouse events
             canvas.addEventListener('mousedown', startDraw);
             canvas.addEventListener('mousemove', draw);
             canvas.addEventListener('mouseup', endDraw);
             canvas.addEventListener('mouseleave', endDraw);
 
-            // Touch events for mobile
             canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
             canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
             canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
 
-            // Save initial blank state
             saveHistory();
         }
 
         function getPos(e) {
             const rect = canvas.getBoundingClientRect();
-            return {
-                x: e.clientX - rect.left,
-                y: e.clientY - rect.top
-            };
+            return { x: e.clientX - rect.left, y: e.clientY - rect.top };
         }
 
         function startDraw(e) {
@@ -652,20 +746,16 @@
         }
 
         function endDraw() {
-            if (isDrawing) {
-                isDrawing = false;
-                saveHistory();
-            }
+            if (isDrawing) { isDrawing = false; saveHistory(); }
         }
 
         function handleTouchStart(e) {
             e.preventDefault();
             const touch = e.touches[0];
             const rect = canvas.getBoundingClientRect();
-            const pos = { x: touch.clientX - rect.left, y: touch.clientY - rect.top };
+            lastX = touch.clientX - rect.left;
+            lastY = touch.clientY - rect.top;
             isDrawing = true;
-            lastX = pos.x;
-            lastY = pos.y;
         }
 
         function handleTouchMove(e) {
@@ -684,27 +774,18 @@
 
         function handleTouchEnd(e) {
             e.preventDefault();
-            if (isDrawing) {
-                isDrawing = false;
-                saveHistory();
-            }
+            if (isDrawing) { isDrawing = false; saveHistory(); }
         }
 
         function saveHistory() {
             if (!canvas) return;
             const data = canvas.toDataURL();
-            // Remove future states if we're not at the end
             if (historyIndex < drawingHistory.length - 1) {
                 drawingHistory = drawingHistory.slice(0, historyIndex + 1);
             }
             drawingHistory.push(data);
             historyIndex = drawingHistory.length - 1;
-
-            // Limit history to 30
-            if (drawingHistory.length > 30) {
-                drawingHistory.shift();
-                historyIndex--;
-            }
+            if (drawingHistory.length > 30) { drawingHistory.shift(); historyIndex--; }
         }
 
         function undoWhiteboard() {
@@ -747,11 +828,154 @@
         }
 
         // ============================================================
-        // 🚪 END CLASS
+        // 🔍 LOAD BOOKING DATA
         // ============================================================
-        async function endClass() {
-            if (!confirm('End the class? This will mark the session as completed.')) return;
+        async function loadBookingData() {
+            try {
+                if (!bookingId) return;
 
+                const doc = await db.collection('bookings').doc(bookingId).get();
+                if (!doc.exists) return;
+
+                bookingData = { id: doc.id, ...doc.data() };
+                studentId = bookingData.studentId;
+                studentName = bookingData.studentName || 'Student';
+                tutorId = bookingData.tutorId;
+                tutorName = bookingData.tutorName || 'Tutor';
+                subject = bookingData.subject || 'General';
+                parentId = bookingData.parentId || null;
+
+                // Update UI
+                document.getElementById('className').textContent = `📚 ${subject} Session`;
+                const user = auth.currentUser;
+                const isTutor = user && user.uid === tutorId;
+                userRole = isTutor ? 'tutor' : 'student';
+
+                document.getElementById('classSub').textContent =
+                    `${isTutor ? 'Tutor' : 'Student'}: ${isTutor ? tutorName : studentName} • ${userRole === 'tutor' ? 'Student' : 'Tutor'}: ${userRole === 'tutor' ? studentName : tutorName}`;
+                document.getElementById('remoteLabel').textContent = `👤 ${userRole === 'tutor' ? studentName : tutorName}`;
+
+            } catch (error) {
+                console.error('Error loading booking:', error);
+            }
+        }
+
+        // ============================================================
+        // 🚪 END CLASS WITH TUTOR MARKING
+        // ============================================================
+        function endClass() {
+            if (!confirm('End the class? This will mark it as completed.')) return;
+
+            // Check if user is tutor - show marking modal
+            if (userRole === 'tutor') {
+                document.getElementById('markModal').classList.add('active');
+                document.body.style.overflow = 'hidden';
+            } else {
+                // Student ends class - just complete without marking
+                completeClassWithoutMark();
+            }
+        }
+
+        function closeMarkModal() {
+            document.getElementById('markModal').classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        document.getElementById('markForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const score = parseInt(document.getElementById('markScore').value);
+            const feedback = document.getElementById('markFeedback').value.trim();
+            const strengths = document.getElementById('markStrengths').value.split(',').map(s => s.trim()).filter(s => s);
+            const weaknesses = document.getElementById('markWeaknesses').value.split(',').map(s => s.trim()).filter(s => s);
+
+            if (!score || score < 0 || score > 100) {
+                showToast('Please enter a valid score (0-100)', 'error');
+                return;
+            }
+
+            const btn = this.querySelector('.btn-primary');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span> Submitting...';
+
+            try {
+                // Save tutor feedback
+                await db.collection('tutorFeedback').add({
+                    studentId: studentId,
+                    tutorId: tutorId,
+                    bookingId: bookingId,
+                    subject: subject,
+                    score: score,
+                    feedback: feedback || 'No feedback provided',
+                    strengths: strengths,
+                    weaknesses: weaknesses,
+                    tutorName: tutorName,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                // Update student progress with tutor mark
+                const progressSnapshot = await db.collection('studentProgress')
+                    .where('studentId', '==', studentId)
+                    .get();
+
+                if (!progressSnapshot.empty) {
+                    for (const doc of progressSnapshot.docs) {
+                        await db.collection('studentProgress').doc(doc.id).update({
+                            overallTutorRating: score,
+                            tutorFeedback: feedback || 'No feedback',
+                            strengths: strengths,
+                            weaknesses: weaknesses,
+                            lastTutorMark: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                    }
+                }
+
+                // Send notification to parent
+                if (parentId) {
+                    await db.collection('notifications').add({
+                        userId: parentId,
+                        title: '📝 New Tutor Feedback',
+                        message: `${studentName} scored ${score}% in ${subject}.\nFeedback: "${feedback || 'No feedback'}"`,
+                        type: 'tutor_feedback',
+                        studentId: studentId,
+                        bookingId: bookingId,
+                        read: false,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                }
+
+                // Send notification to student
+                if (studentId) {
+                    await db.collection('notifications').add({
+                        userId: studentId,
+                        title: '📝 New Feedback from Tutor',
+                        message: `You scored ${score}% in ${subject}. ${feedback ? 'Feedback: "' + feedback + '"' : ''}`,
+                        type: 'tutor_feedback',
+                        bookingId: bookingId,
+                        read: false,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                }
+
+                closeMarkModal();
+                showToast('✅ Feedback submitted!', 'success');
+
+                // Complete the class
+                await completeClassInternal();
+
+            } catch (error) {
+                console.error('Error submitting feedback:', error);
+                showToast('Error submitting feedback', 'error');
+                btn.disabled = false;
+                btn.innerHTML = '✅ Submit & End Class';
+            }
+        });
+
+        async function completeClassWithoutMark() {
+            await completeClassInternal();
+        }
+
+        async function completeClassInternal() {
             stopTimer();
             showToast('🚪 Class ended!', 'success');
 
@@ -768,13 +992,38 @@
                 }
             }
 
-            // Show summary
             const totalMinutes = Math.floor(seconds / 60);
             const totalSeconds = seconds % 60;
             showToast(`📊 Class completed! Duration: ${totalMinutes}m ${totalSeconds}s`, 'success');
 
+            // Notify both parties
+            if (studentId) {
+                await db.collection('notifications').add({
+                    userId: studentId,
+                    title: '🎉 Class Completed!',
+                    message: `Your ${subject} class with ${tutorName} has been completed. Duration: ${totalMinutes}m ${totalSeconds}s`,
+                    type: 'class_completed',
+                    bookingId: bookingId,
+                    read: false,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+            }
+
+            if (parentId) {
+                await db.collection('notifications').add({
+                    userId: parentId,
+                    title: '🎉 Class Completed!',
+                    message: `${studentName}'s ${subject} class with ${tutorName} is complete. Duration: ${totalMinutes}m ${totalSeconds}s`,
+                    type: 'class_completed',
+                    bookingId: bookingId,
+                    read: false,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+            }
+
             setTimeout(() => {
-                window.location.href = 'tutor-dashboard.html';
+                const dashboard = userRole === 'tutor' ? 'tutor-dashboard.html' : 'student-dashboard.html';
+                window.location.href = dashboard;
             }, 2000);
         }
 
@@ -788,26 +1037,12 @@
             }
             currentUser = user;
 
-            // Get user role
-            const userDoc = await db.collection('users').doc(user.uid).get();
-            const userData = userDoc.exists ? userDoc.data() : {};
-            userRole = userData.role || 'tutor';
-
-            // Set class info
-            document.getElementById('className').textContent = `📚 ${userRole === 'tutor' ? 'Teaching' : 'Learning'} Session`;
-            document.getElementById('classSub').textContent = `🔑 Class ID: ${classId.substring(0, 8)}`;
-
-            // Show correct remote label
-            document.getElementById('remoteLabel').textContent = userRole === 'tutor' ? '👤 Student' : '👨‍🏫 Tutor';
-
-            // Init features
+            await loadBookingData();
             await initWebRTC();
             listenChat();
 
-            // Initialize whiteboard after tab switch
             setTimeout(initWhiteboard, 500);
 
-            // If booking exists, mark as in-progress
             if (bookingId) {
                 try {
                     await db.collection('bookings').doc(bookingId).update({
@@ -821,7 +1056,7 @@
         });
 
         console.log('🏠 Live Class Room loaded!');
-        console.log('📹 WebRTC, 💬 Chat, 📝 Whiteboard all active!');
+        console.log('📹 WebRTC, 💬 Chat, 📝 Whiteboard, 📝 Tutor Marking!');
     </script>
 
 </body>
