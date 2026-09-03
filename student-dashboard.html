@@ -16,6 +16,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>
 
     <style>
+        /* ===== ALL EXISTING STYLES (keep everything you already have) ===== */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -38,6 +39,10 @@
             background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460, #1a1a2e);
             background-size: 400% 400%;
             animation: gradientShift 12s ease infinite;
+        }
+        #loadingScreen.skip {
+            opacity: 0;
+            pointer-events: none;
         }
         @keyframes gradientShift {
             0% { background-position: 0% 50%; }
@@ -615,21 +620,21 @@
         .post-card .post-menu-dropdown button.delete { color: #ef4444; }
         .post-card .post-menu-dropdown button.delete:hover { background: #fee2e2; }
 
-        .comments-section {
+        /* ===== COMMENTS ===== */
+        .post-comments {
             margin-top: 0.5rem;
             padding-top: 0.5rem;
             border-top: 1px solid #e5e7eb;
-            display: none;
         }
-        .comments-section.active { display: block; }
-        .comments-section .comment-item {
+        .post-comments .comment-item {
             display: flex;
             gap: 0.5rem;
             padding: 0.3rem 0;
             align-items: flex-start;
         }
-        .comments-section .comment-item .comment-avatar {
-            width: 28px; height: 28px;
+        .post-comments .comment-item .c-avatar {
+            width: 28px;
+            height: 28px;
             border-radius: 50%;
             background: linear-gradient(135deg, #667eea, #764ba2);
             display: flex;
@@ -640,41 +645,31 @@
             font-size: 0.7rem;
             flex-shrink: 0;
         }
-        .comments-section .comment-item .comment-body {
+        .post-comments .comment-item .c-body {
             background: #f0f2f5;
-            padding: 0.4rem 0.7rem;
+            padding: 0.3rem 0.7rem;
             border-radius: 10px;
             flex: 1;
         }
-        .comments-section .comment-item .comment-body .comment-user {
-            font-weight: 600;
-            font-size: 0.8rem;
-            color: #1a1a2e;
-        }
-        .comments-section .comment-item .comment-body .comment-text {
-            font-size: 0.85rem;
-            color: #333;
-        }
-        .comments-section .comment-item .comment-body .comment-time {
-            font-size: 0.65rem;
-            color: #999;
-        }
-        .comments-section .comment-input {
+        .post-comments .comment-item .c-body .c-user { font-weight: 600; font-size: 0.8rem; color: #1a1a2e; }
+        .post-comments .comment-item .c-body .c-text { font-size: 0.85rem; color: #333; }
+        .post-comments .comment-item .c-body .c-time { font-size: 0.65rem; color: #999; }
+        .post-comments .comment-input {
             display: flex;
             gap: 0.5rem;
-            margin-top: 0.5rem;
+            margin-top: 0.4rem;
         }
-        .comments-section .comment-input input {
+        .post-comments .comment-input input {
             flex: 1;
-            padding: 0.5rem 0.8rem;
+            padding: 0.4rem 0.8rem;
             border: 2px solid #e5e7eb;
             border-radius: 20px;
             font-size: 0.85rem;
             font-family: inherit;
         }
-        .comments-section .comment-input input:focus { outline: none; border-color: #667eea; }
-        .comments-section .comment-input button {
-            padding: 0.4rem 1rem;
+        .post-comments .comment-input input:focus { outline: none; border-color: #667eea; }
+        .post-comments .comment-input button {
+            padding: 0.3rem 1rem;
             background: linear-gradient(135deg, #667eea, #764ba2);
             color: white;
             border: none;
@@ -683,8 +678,41 @@
             font-size: 0.8rem;
             cursor: pointer;
         }
-        .comments-section .comment-input button:hover { transform: scale(1.05); }
+        .post-comments .comment-input button:hover { transform: scale(1.05); }
 
+        /* ===== BOOKING CARD (new) ===== */
+        .booking-card-mini {
+            background: #f8f9fa;
+            padding: 0.8rem;
+            border-radius: 10px;
+            margin-bottom: 0.5rem;
+            border-left: 4px solid #667eea;
+        }
+        .booking-card-mini .b-title { font-weight: 600; color: #1a1a2e; font-size: 0.95rem; }
+        .booking-card-mini .b-detail { font-size: 0.8rem; color: #666; }
+        .booking-card-mini .b-status {
+            font-size: 0.7rem;
+            padding: 2px 10px;
+            border-radius: 10px;
+            font-weight: 600;
+        }
+        .booking-card-mini .b-status.confirmed { background: #dbeafe; color: #1e40af; }
+        .booking-card-mini .b-status.in-progress { background: #fef3c7; color: #92400e; }
+
+        .booking-card-mini .btn-join {
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+            color: white;
+            border: none;
+            padding: 4px 14px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .booking-card-mini .btn-join:hover { transform: scale(1.05); }
+
+        /* ===== EXISTING COMPONENTS ===== */
         .welcome-banner {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
@@ -830,15 +858,9 @@
             cursor: pointer;
             transition: all 0.3s ease;
         }
-        .tutor-card .tutor-actions .btn-profile {
-            background: #667eea;
-            color: white;
-        }
+        .tutor-card .tutor-actions .btn-profile { background: #667eea; color: white; }
         .tutor-card .tutor-actions .btn-profile:hover { transform: scale(1.05); }
-        .tutor-card .tutor-actions .btn-view {
-            background: #f0f2f5;
-            color: #666;
-        }
+        .tutor-card .tutor-actions .btn-view { background: #f0f2f5; color: #666; }
         .tutor-card .tutor-actions .btn-view:hover { background: #e5e7eb; }
         .tutor-card .verified-badge {
             display: inline-block;
@@ -1299,12 +1321,15 @@
 
         <!-- MAIN CONTENT -->
         <div class="container">
+
+            <!-- Welcome Banner -->
             <div class="welcome-banner">
                 <h2 id="welcomeMsg">Welcome back, Student! 👋</h2>
                 <p>Your journey to exam success starts here. 🇳🇬</p>
                 <span class="exam-badge" id="examBadge">📝 Loading...</span>
             </div>
 
+            <!-- Stats -->
             <div class="stats-grid">
                 <div class="stat-card" onclick="window.location.href='holiday-bootcamp.html'">
                     <div class="number" id="courseCount">0</div>
@@ -1324,6 +1349,7 @@
                 </div>
             </div>
 
+            <!-- Holiday Bootcamp -->
             <div class="section-header">
                 <h3>📚 Holiday Bootcamp</h3>
                 <a onclick="window.location.href='holiday-bootcamp.html'">See all →</a>
@@ -1332,6 +1358,18 @@
                 <div class="loading-spinner"><div class="spinner"></div></div>
             </div>
 
+            <!-- ===== NEW: MY BOOKINGS ===== -->
+            <div id="myBookingsSection" class="post-card">
+                <div class="flex-between">
+                    <h3 style="font-size:1rem;">📅 My Bookings</h3>
+                    <span class="badge badge-purple" id="bookingCount">0</span>
+                </div>
+                <div id="myBookingsList">
+                    <div class="text-muted" style="padding:1rem 0;text-align:center;">📭 No upcoming bookings</div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:0.6rem;margin-bottom:0.8rem;">
                 <button onclick="window.location.href='holiday-bootcamp.html'" class="btn-primary" style="padding:0.8rem;font-size:0.9rem;">📚 Bootcamp</button>
                 <button onclick="window.location.href='my-progress.html'" class="btn-success" style="padding:0.8rem;font-size:0.9rem;background:#22c55e;color:white;border:none;border-radius:10px;cursor:pointer;font-weight:600;">📊 Progress</button>
@@ -1339,6 +1377,7 @@
                 <button onclick="window.location.href='study-groups.html'" class="btn-outline" style="padding:0.8rem;font-size:0.9rem;">👥 Groups</button>
             </div>
 
+            <!-- Create Post -->
             <div class="create-post">
                 <div class="create-post-header">
                     <div class="avatar-sm" id="postAvatar">👤</div>
@@ -1355,10 +1394,12 @@
                 <input type="hidden" id="postImageURL" value="" />
             </div>
 
+            <!-- Feed -->
             <div id="feed">
                 <div class="loading-spinner"><div class="spinner"></div><p style="margin-top:0.5rem;">Loading posts...</p></div>
             </div>
 
+            <!-- Top Tutors -->
             <div class="section-header">
                 <h3>👨‍🏫 Top Tutors</h3>
                 <a onclick="window.location.href='top-tutors.html'">View all →</a>
@@ -1367,6 +1408,7 @@
                 <div class="loading-spinner"><div class="spinner"></div></div>
             </div>
 
+            <!-- Premium Banner -->
             <div id="premiumBanner" class="post-card" style="background:linear-gradient(135deg, #1a1a2e, #16213e);color:white;border:none;">
                 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;">
                     <div>
@@ -1377,6 +1419,7 @@
                 </div>
             </div>
 
+            <!-- Offline Mode -->
             <div class="post-card" style="background:#fef3c7;border:2px solid #f59e0b;">
                 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;">
                     <div>
@@ -1516,6 +1559,30 @@
         }
 
         // ============================================================
+        // LOADING SCREEN CONTROL
+        // ============================================================
+        function controlLoadingScreen() {
+            const loadingScreen = document.getElementById('loadingScreen');
+            const mainContent = document.getElementById('mainContent');
+            if (localStorage.getItem('studentDashboardLoaded') === 'true') {
+                loadingScreen.classList.add('skip');
+                mainContent.classList.add('visible');
+                mainContent.style.display = 'block';
+                return true;
+            }
+            return false;
+        }
+
+        function markDashboardLoaded() {
+            localStorage.setItem('studentDashboardLoaded', 'true');
+            const loadingScreen = document.getElementById('loadingScreen');
+            const mainContent = document.getElementById('mainContent');
+            loadingScreen.classList.add('hidden');
+            mainContent.classList.add('visible');
+            mainContent.style.display = 'block';
+        }
+
+        // ============================================================
         // GLOBALS
         // ============================================================
         let currentUser = null;
@@ -1528,6 +1595,7 @@
         let likedPosts = new Set();
         let allTutors = [];
         let isPremium = false;
+        let myBookings = [];
 
         // ============================================================
         // UTILITY FUNCTIONS
@@ -1718,6 +1786,70 @@
         }
 
         // ============================================================
+        // LOAD BOOKINGS FOR STUDENT
+        // ============================================================
+        async function loadMyBookings() {
+            try {
+                const user = auth.currentUser;
+                if (!user) return;
+
+                const snapshot = await db.collection('bookings')
+                    .where('studentId', '==', user.uid)
+                    .where('status', 'in', ['confirmed', 'in-progress'])
+                    .get();
+
+                const bookings = [];
+                snapshot.forEach(doc => {
+                    bookings.push({ id: doc.id, ...doc.data() });
+                });
+
+                // Sort by date
+                bookings.sort((a,b) => new Date(a.date || 0) - new Date(b.date || 0));
+
+                myBookings = bookings;
+                document.getElementById('bookingCount').textContent = bookings.length;
+
+                renderMyBookings(bookings);
+
+            } catch (error) {
+                console.error('Error loading bookings:', error);
+            }
+        }
+
+        function renderMyBookings(bookings) {
+            const container = document.getElementById('myBookingsList');
+
+            if (!bookings || bookings.length === 0) {
+                container.innerHTML = `
+                    <div class="text-muted" style="padding:1rem 0;text-align:center;">📭 No upcoming bookings</div>
+                `;
+                return;
+            }
+
+            let html = '';
+            for (const booking of bookings) {
+                const status = booking.status || 'confirmed';
+                const statusClass = status === 'in-progress' ? 'in-progress' : 'confirmed';
+                const statusLabel = status === 'in-progress' ? '🟡 In Progress' : '✅ Confirmed';
+                const btnText = status === 'in-progress' ? '▶️ Resume Class' : '▶️ Join Class';
+
+                html += `
+                    <div class="booking-card-mini">
+                        <div class="flex-between">
+                            <span class="b-title">👨‍🏫 ${booking.tutorName || 'Tutor'}</span>
+                            <span class="b-status ${statusClass}">${statusLabel}</span>
+                        </div>
+                        <div class="b-detail">📚 ${booking.subject || 'General'} • 📅 ${booking.date || 'N/A'} • 🕐 ${booking.time || 'N/A'}</div>
+                        <div style="margin-top:0.3rem;">
+                            <button class="btn-join" onclick="window.location.href='live-class-room.html?booking=${booking.id}'">${btnText}</button>
+                        </div>
+                    </div>
+                `;
+            }
+            container.innerHTML = html;
+        }
+
+        // ============================================================
         // LOAD STUDENT DASHBOARD (PARALLELIZED)
         // ============================================================
         async function loadStudentDashboard() {
@@ -1878,15 +2010,15 @@
                     } else isPremium = false;
                 }
 
+                updateProgress(92, '📅 Loading your bookings...');
+                await loadMyBookings();
+
                 updateProgress(95, '📬 Loading notifications...');
                 await loadNotifications();
                 updateProgress(100, '🎉 Ready!');
 
-                setTimeout(() => {
-                    document.getElementById('loadingScreen').classList.add('hidden');
-                    document.getElementById('mainContent').classList.add('visible');
-                    document.getElementById('mainContent').style.display = 'block';
-                }, 500);
+                // Mark dashboard as loaded (skip loading screen next time)
+                markDashboardLoaded();
 
             } catch (error) {
                 console.error('Error loading dashboard:', error);
@@ -1925,7 +2057,7 @@
         }
 
         // ============================================================
-        // RENDER POSTS
+        // RENDER POSTS (with comments)
         // ============================================================
         function renderPosts(posts) {
             const feed = document.getElementById('feed');
@@ -1959,16 +2091,16 @@
                 let commentsHtml = '';
                 if (post.commentsList && post.commentsList.length > 0) {
                     for (const comment of post.commentsList) {
-                        const commentUser = comment.userName || 'User';
-                        const commentAvatar = comment.userAvatar || commentUser.charAt(0).toUpperCase();
-                        const commentTime = comment.createdAt?.toDate?.() || new Date();
+                        const cUser = comment.userName || 'User';
+                        const cAvatar = comment.userAvatar || cUser.charAt(0).toUpperCase();
+                        const cTime = comment.createdAt?.toDate?.() || new Date();
                         commentsHtml += `
                             <div class="comment-item">
-                                <div class="comment-avatar">${commentAvatar}</div>
-                                <div class="comment-body">
-                                    <div class="comment-user">${commentUser}</div>
-                                    <div class="comment-text">${comment.text}</div>
-                                    <div class="comment-time">${timeAgo(commentTime)}</div>
+                                <div class="c-avatar">${cAvatar}</div>
+                                <div class="c-body">
+                                    <div class="c-user">${cUser}</div>
+                                    <div class="c-text">${comment.text}</div>
+                                    <div class="c-time">${timeAgo(cTime)}</div>
                                 </div>
                             </div>
                         `;
@@ -2001,24 +2133,69 @@
                             <button class="${isLiked ? 'liked' : ''}" onclick="likePost(this, '${post.id}')">
                                 ${isLiked ? '❤️' : '🤍'} <span class="count">${post.likes || 0}</span>
                             </button>
-                            <button onclick="toggleComments(this, '${post.id}')">
+                            <button onclick="toggleCommentsStudent('${post.id}')">
                                 💬 <span class="count">${commentCount}</span>
                             </button>
                             <button onclick="sharePost('${post.id}')">↗️ Share</button>
                         </div>
-                        <div class="comments-section" id="comments-${post.id}">
-                            <div id="comments-list-${post.id}">
-                                ${commentsHtml}
-                            </div>
+                        <div class="post-comments" id="comments-${post.id}" style="display:none;">
+                            ${commentsHtml}
                             <div class="comment-input">
                                 <input type="text" id="comment-input-${post.id}" placeholder="Write a comment..." />
-                                <button onclick="addComment('${post.id}')">Post</button>
+                                <button onclick="addCommentStudent('${post.id}')">Post</button>
                             </div>
                         </div>
                     </div>
                 `;
             }
             feed.innerHTML = html;
+        }
+
+        // ============================================================
+        // STUDENT COMMENTS
+        // ============================================================
+        function toggleCommentsStudent(postId) {
+            const container = document.getElementById(`comments-${postId}`);
+            if (container) {
+                container.style.display = container.style.display === 'none' ? 'block' : 'none';
+            }
+        }
+
+        async function addCommentStudent(postId) {
+            const input = document.getElementById(`comment-input-${postId}`);
+            const text = input.value.trim();
+            if (!text) { showToast('Please write a comment', 'warning'); return; }
+
+            try {
+                const user = auth.currentUser;
+                if (!user) return;
+
+                const userDoc = await db.collection('users').doc(user.uid).get();
+                const userName = userDoc.exists ? userDoc.data().fullName || 'Student' : 'Student';
+
+                const commentData = {
+                    postId: postId,
+                    userId: user.uid,
+                    userName: userName,
+                    userAvatar: userData?.profilePic || '',
+                    text: text,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                };
+
+                await db.collection('comments').add(commentData);
+                await db.collection('posts').doc(postId).update({
+                    comments: firebase.firestore.FieldValue.increment(1)
+                });
+
+                input.value = '';
+                showToast('💬 Comment added!', 'success');
+                // Refresh posts
+                await loadStudentDashboard();
+
+            } catch (error) {
+                console.error('Error adding comment:', error);
+                showToast('Error adding comment', 'error');
+            }
         }
 
         // ============================================================
@@ -2201,38 +2378,6 @@
         }
 
         // ============================================================
-        // COMMENTS
-        // ============================================================
-        function toggleComments(btn, postId) {
-            document.getElementById(`comments-${postId}`).classList.toggle('active');
-        }
-
-        async function addComment(postId) {
-            const input = document.getElementById(`comment-input-${postId}`);
-            const text = input.value.trim();
-            if (!text) { showToast('Please write a comment', 'warning'); return; }
-            try {
-                const user = auth.currentUser;
-                if (!user) return;
-                const commentData = {
-                    postId: postId,
-                    userId: user.uid,
-                    userName: userData?.fullName || 'Student',
-                    userAvatar: userData?.profilePic || '',
-                    text: text,
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                };
-                await db.collection('comments').add(commentData);
-                await db.collection('posts').doc(postId).update({ comments: firebase.firestore.FieldValue.increment(1) });
-                input.value = '';
-                showToast('💬 Comment added!', 'success');
-                await loadStudentDashboard();
-            } catch (error) {
-                showToast('Error: ' + error.message, 'error');
-            }
-        }
-
-        // ============================================================
         // POST MENU
         // ============================================================
         function togglePostMenu(postId) {
@@ -2300,6 +2445,7 @@
         async function logout() {
             if (!confirm('Are you sure you want to logout?')) return;
             try {
+                localStorage.removeItem('studentDashboardLoaded');
                 await auth.signOut();
                 showToast('👋 Logged out', 'success');
                 window.location.href = 'index.html';
@@ -2314,13 +2460,23 @@
                 document.getElementById('loadingScreen').classList.add('hidden');
                 window.location.href = 'index.html';
             } else {
-                loadStudentDashboard();
+                const skipped = controlLoadingScreen();
+                if (!skipped) {
+                    loadStudentDashboard();
+                } else {
+                    // Already loaded, but refresh data in background
+                    loadStudentDashboard();
+                }
                 setInterval(loadNotifications, 30000);
+                setInterval(loadMyBookings, 60000);
             }
         });
 
-        console.log('📚 Student Dashboard - LOTTIE STUDENT + ANIMATED BACKGROUND!');
-        console.log('🧑‍🎓 Student studying animation is playing on loading screen!');
+        console.log('📚 Student Dashboard - UPDATED!');
+        console.log('🚀 Fast loading with localStorage cache!');
+        console.log('📅 My Bookings section added with "Join Class" button!');
+        console.log('💬 Students can see and reply to comments!');
+        console.log('🏠 Live Class Room connected!');
     </script>
 
 </body>
