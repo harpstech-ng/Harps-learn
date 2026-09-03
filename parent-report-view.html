@@ -235,7 +235,7 @@
 
     <div class="navbar">
         <div class="logo" onclick="window.location.href='parent-dashboard.html'">👪 Harps<span>Learn</span></div>
-        <button class="back-btn" onclick="window.location.href='parent-dashboard.html'">✕</button>
+        <button class="back-btn" onclick="window.history.back()">✕</button>
     </div>
 
     <div class="container">
@@ -254,6 +254,9 @@
     </div>
 
     <script>
+        // ============================================================
+        // 🔥 FIREBASE CONFIG
+        // ============================================================
         const firebaseConfig = {
             apiKey: "AIzaSyDy-j3_iZwv7IE7HYHircFeEWGdoGizf5M",
             authDomain: "harpslearn.firebaseapp.com",
@@ -269,9 +272,9 @@
         const db = firebase.firestore();
 
         let childData = null;
-        let allCourses = [];
-        let allFeedback = [];
+        let progressRecords = [];
         let aiData = null;
+        let feedbackRecords = [];
 
         function showToast(message, type = 'info') {
             const existing = document.querySelector('.toast');
@@ -316,70 +319,51 @@
                     return;
                 }
 
-                // Get child data
+                // 1. Get child's student document
                 const childDoc = await db.collection('students').doc(childId).get();
-                childData = childDoc.data();
-
-                if (!childData) {
+                if (!childDoc.exists) {
                     showToast('Child not found', 'error');
                     return;
                 }
+                childData = childDoc.data();
 
-                // Get user data for child
+                // 2. Get child's user info (name, email, etc.)
                 const userDoc = await db.collection('users').doc(childData.userId).get();
-                const childUserData = userDoc.exists ? userDoc.data() : {};
+                const userData = userDoc.exists ? userDoc.data() : {};
 
-                const name = childUserData.fullName || 'Child';
+                const name = userData.fullName || 'Child';
                 document.getElementById('reportTitle').textContent = `📊 ${name}'s Full Report`;
                 document.getElementById('childNameHeader').textContent = `📚 ${childData.examType || 'WAEC'} • ${childData.gradeLevel || 'SS1'}`;
 
-                // --- LOAD ALL DATA IN PARALLEL ---
-                const [progressSnapshot, aiSnapshot, feedbackSnapshot, coursesSnapshot] = await Promise.all([
+                // 3. Fetch ALL data in parallel
+                const [
+                    progressSnapshot,
+                    aiSnapshot,
+                    feedbackSnapshot
+                ] = await Promise.all([
                     db.collection('studentProgress').where('studentId', '==', childData.userId).get(),
                     db.collection('aiUsage').where('studentId', '==', childData.userId).get(),
-                    db.collection('tutorFeedback').where('studentId', '==', childData.userId).orderBy('createdAt', 'desc').get(),
-                    db.collection('courses').where('studentId', '==', childData.userId).get()
+                    db.collection('tutorFeedback').where('studentId', '==', childData.userId).orderBy('createdAt', 'desc').get()
                 ]);
 
-                // Process progress
-                const progressData = [];
+                // 4. Process progress records
+                progressRecords = [];
                 progressSnapshot.forEach(doc => {
-                    progressData.push({ id: doc.id, ...doc.data() });
+                    progressRecords.push({ id: doc.id, ...doc.data() });
                 });
 
-                // Process AI usage
+                // 5. Process AI usage
                 aiData = null;
                 aiSnapshot.forEach(doc => { aiData = { id: doc.id, ...doc.data() }; });
 
-                // Process feedback
-                allFeedback = [];
+                // 6. Process feedback
+                feedbackRecords = [];
                 feedbackSnapshot.forEach(doc => {
-                    allFeedback.push({ id: doc.id, ...doc.data() });
+                    feedbackRecords.push({ id: doc.id, ...doc.data() });
                 });
 
-                // Process courses
-                allCourses = [];
-                coursesSnapshot.forEach(doc => {
-                    allCourses.push({ id: doc.id, ...doc.data() });
-                });
-
-                // Calculate stats
-                const totalCourses = allCourses.length || 0;
-                const totalLessons = allCourses.reduce((sum, c) => sum + (c.lessons || 0), 0);
-                const avgProgress = allCourses.length > 0 ? Math.round(allCourses.reduce((sum, c) => sum + (c.progress || 0), 0) / allCourses.length) : 0;
-                const totalAIQuestions = aiData?.totalQuestions || 0;
-                const totalFeedback = allFeedback.length;
-
-                // Get tutor marks
-                const tutorMarks = allFeedback.filter(f => f.score).map(f => f.score);
-                const avgTutorMark = tutorMarks.length > 0 ? Math.round(tutorMarks.reduce((a,b) => a+b, 0) / tutorMarks.length) : 0;
-
-                // Render all sections
-                renderStats(totalCourses, totalLessons, avgProgress, totalAIQuestions, totalFeedback, avgTutorMark);
-                renderCourses(allCourses);
-                renderAIUsage(aiData);
-                renderFeedback(allFeedback);
-                renderRecommendations(allCourses, allFeedback);
+                // 7. Render everything
+                renderReport();
 
             } catch (error) {
                 console.error('Error loading report:', error);
@@ -391,10 +375,30 @@
         }
 
         // ============================================================
-        // RENDER STATS
+        // RENDER REPORT
         // ============================================================
-        function renderStats(totalCourses, totalLessons, avgProgress, totalAIQuestions, totalFeedback, avgTutorMark) {
-            document.getElementById('reportContent').innerHTML = `
+        function renderReport() {
+            const container = document.getElementById('reportContent');
+
+            // Calculate stats
+            const totalCourses = progressRecords.length;
+            const totalLessons = progressRecords.reduce((sum, p) => sum + (p.totalLessons || 0), 0);
+            const totalProgress = progressRecords.reduce((sum, p) => sum + (p.progress || 0), 0);
+            const avgProgress = totalCourses > 0 ? Math.round(totalProgress / totalCourses) : 0;
+
+            const aiQuestions = aiData?.totalQuestions || 0;
+            const totalFeedback = feedbackRecords.length;
+
+            // Get tutor marks from feedback
+            const tutorMarks = feedbackRecords.filter(f => f.score).map(f => f.score);
+            const avgTutorMark = tutorMarks.length > 0 ? Math.round(tutorMarks.reduce((a,b) => a+b, 0) / tutorMarks.length) : 0;
+
+            // ---- Build HTML ----
+
+            let html = '';
+
+            // 1. Stats Section
+            html += `
                 <div class="report-section">
                     <div class="section-title">📈 Performance Overview</div>
                     <div class="stat-row">
@@ -411,7 +415,7 @@
                             <div class="label">📊 Avg Progress</div>
                         </div>
                         <div class="stat-box">
-                            <div class="value">${totalAIQuestions}</div>
+                            <div class="value">${aiQuestions}</div>
                             <div class="label">🤖 AI Questions</div>
                         </div>
                         <div class="stat-box">
@@ -425,89 +429,58 @@
                     </div>
                 </div>
             `;
-        }
 
-        // ============================================================
-        // RENDER COURSES
-        // ============================================================
-        function renderCourses(courses) {
-            const container = document.getElementById('reportContent');
+            // 2. Course Progress
+            html += `<div class="report-section"><div class="section-title">📚 Course Progress</div>`;
+            if (progressRecords.length === 0) {
+                html += `<div class="text-muted">No courses enrolled yet</div>`;
+            } else {
+                for (const p of progressRecords) {
+                    const courseName = p.courseTitle || p.courseId || 'Course';
+                    const progress = p.progress || 0;
+                    const color = progress >= 80 ? '#22c55e' : progress >= 50 ? '#f59e0b' : '#ef4444';
+                    const completed = p.lessonsCompleted?.length || 0;
+                    const total = p.totalLessons || 0;
 
-            if (!courses || courses.length === 0) {
-                container.innerHTML += `
-                    <div class="report-section">
-                        <div class="section-title">📚 Course Progress</div>
-                        <div class="text-muted">No courses enrolled yet</div>
-                    </div>
-                `;
-                return;
-            }
+                    // Find associated feedback for this course
+                    const feedbackForCourse = feedbackRecords.find(f => f.courseId === p.courseId || f.subject === courseName);
+                    const tutorMark = feedbackForCourse?.score || '';
 
-            let html = `
-                <div class="report-section">
-                    <div class="section-title">📚 Course Progress</div>
-            `;
-
-            for (const course of courses) {
-                const progress = course.progress || 0;
-                const color = progress >= 80 ? '#22c55e' : progress >= 50 ? '#f59e0b' : '#ef4444';
-
-                // Check if there's a tutor mark for this course
-                const tutorMark = allFeedback.find(f => f.subject === course.name || f.courseId === course.id);
-                const markDisplay = tutorMark ? `• Tutor mark: ${tutorMark.score}%` : '';
-
-                html += `
-                    <div class="progress-item">
-                        <div class="subject-name">
-                            <span>${course.icon || '📚'} ${course.name}</span>
-                            <span style="color:${color};">${progress}%</span>
+                    html += `
+                        <div class="progress-item">
+                            <div class="subject-name">
+                                <span>📘 ${courseName}</span>
+                                <span style="color:${color};">${progress}%</span>
+                            </div>
+                            <div class="bar"><div class="fill" style="width:${progress}%;background:${color};"></div></div>
+                            <div class="tutor-mark">${completed}/${total} lessons done ${tutorMark ? `• 👨‍🏫 Tutor mark: ${tutorMark}%` : ''}</div>
                         </div>
-                        <div class="bar"><div class="fill" style="width:${progress}%;background:${color};"></div></div>
-                        <div class="tutor-mark">${course.lessonsCompleted?.length || 0}/${course.lessons || 0} lessons done ${markDisplay}</div>
-                    </div>
-                `;
-            }
-
-            html += `</div>`;
-            container.innerHTML += html;
-        }
-
-        // ============================================================
-        // RENDER AI USAGE
-        // ============================================================
-        function renderAIUsage(aiData) {
-            const container = document.getElementById('reportContent');
-
-            if (!aiData || aiData.totalQuestions === 0) {
-                container.innerHTML += `
-                    <div class="report-section">
-                        <div class="section-title">🤖 AI Usage</div>
-                        <div class="text-muted">No AI usage data yet</div>
-                    </div>
-                `;
-                return;
-            }
-
-            const topics = aiData.topics || {};
-            const topicKeys = Object.keys(topics);
-            let topicsHtml = '';
-            if (topicKeys.length > 0) {
-                topicsHtml = '<div style="margin-top:0.5rem;">';
-                for (const key of topicKeys) {
-                    topicsHtml += `
-                        <span style="background:#f0f2f5;padding:2px 10px;border-radius:10px;font-size:0.7rem;margin-right:0.3rem;">
-                            ${key}: ${topics[key]} questions
-                        </span>
                     `;
                 }
-                topicsHtml += '</div>';
             }
+            html += `</div>`;
 
-            const lastUsed = aiData.lastUsed?.toDate?.() || new Date();
-
-            container.innerHTML += `
-                <div class="report-section">
-                    <div class="section-title">🤖 AI Usage Analytics</div>
+            // 3. AI Usage
+            html += `<div class="report-section"><div class="section-title">🤖 AI Usage Analytics</div>`;
+            if (!aiData || aiData.totalQuestions === 0) {
+                html += `<div class="text-muted">No AI usage data yet</div>`;
+            } else {
+                const topics = aiData.topics || {};
+                const topicKeys = Object.keys(topics);
+                let topicsHtml = '';
+                if (topicKeys.length > 0) {
+                    topicsHtml = '<div style="margin-top:0.5rem;">';
+                    for (const key of topicKeys) {
+                        topicsHtml += `
+                            <span style="background:#f0f2f5;padding:2px 10px;border-radius:10px;font-size:0.7rem;margin-right:0.3rem;">
+                                ${key}: ${topics[key]} questions
+                            </span>
+                        `;
+                    }
+                    topicsHtml += '</div>';
+                }
+                const lastUsed = aiData.lastUsed?.toDate?.() || new Date();
+                html += `
                     <div class="ai-stats">
                         <div class="ai-stat">
                             <div class="number">${aiData.totalQuestions}</div>
@@ -523,102 +496,70 @@
                         </div>
                     </div>
                     ${topicsHtml}
-                </div>
-            `;
-        }
-
-        // ============================================================
-        // RENDER FEEDBACK
-        // ============================================================
-        function renderFeedback(feedbackData) {
-            const container = document.getElementById('reportContent');
-
-            if (!feedbackData || feedbackData.length === 0) {
-                container.innerHTML += `
-                    <div class="report-section">
-                        <div class="section-title">📝 Tutor Feedback</div>
-                        <div class="text-muted">No tutor feedback yet</div>
-                    </div>
-                `;
-                return;
-            }
-
-            let html = `
-                <div class="report-section">
-                    <div class="section-title">📝 Tutor Feedback & Marks</div>
-            `;
-
-            for (const fb of feedbackData) {
-                const date = fb.createdAt?.toDate?.() || new Date();
-                const strengths = fb.strengths?.join(', ') || 'Not specified';
-                const weaknesses = fb.weaknesses?.join(', ') || 'Not specified';
-
-                html += `
-                    <div class="feedback-item">
-                        <div>
-                            <span class="tutor">👨‍🏫 ${fb.tutorName || 'Tutor'}</span>
-                            <span class="score">${fb.score || 0}%</span>
-                        </div>
-                        <div style="font-size:0.7rem;color:#999;">📚 ${fb.subject || 'General'} • ${date.toLocaleDateString()}</div>
-                        <div class="text">${fb.feedback || 'No feedback provided'}</div>
-                        ${fb.strengths?.length > 0 ? `<div class="strengths">✅ Strengths: ${strengths}</div>` : ''}
-                        ${fb.weaknesses?.length > 0 ? `<div class="weaknesses">⚠️ Areas to improve: ${weaknesses}</div>` : ''}
-                    </div>
                 `;
             }
-
             html += `</div>`;
-            container.innerHTML += html;
-        }
 
-        // ============================================================
-        // RENDER RECOMMENDATIONS
-        // ============================================================
-        function renderRecommendations(courses, feedback) {
-            const container = document.getElementById('reportContent');
+            // 4. Tutor Feedback
+            html += `<div class="report-section"><div class="section-title">📝 Tutor Feedback & Marks</div>`;
+            if (feedbackRecords.length === 0) {
+                html += `<div class="text-muted">No tutor feedback yet</div>`;
+            } else {
+                for (const fb of feedbackRecords) {
+                    const date = fb.createdAt?.toDate?.() || new Date();
+                    const strengths = fb.strengths?.join(', ') || 'Not specified';
+                    const weaknesses = fb.weaknesses?.join(', ') || 'Not specified';
 
-            const weakCourses = courses.filter(c => (c.progress || 0) < 50).map(c => c.name);
-            const mediumCourses = courses.filter(c => (c.progress || 0) >= 50 && (c.progress || 0) < 70).map(c => c.name);
+                    html += `
+                        <div class="feedback-item">
+                            <div>
+                                <span class="tutor">👨‍🏫 ${fb.tutorName || 'Tutor'}</span>
+                                <span class="score">${fb.score || 0}%</span>
+                            </div>
+                            <div style="font-size:0.7rem;color:#999;">📚 ${fb.subject || 'General'} • ${date.toLocaleDateString()}</div>
+                            <div class="text">${fb.feedback || 'No feedback provided'}</div>
+                            ${fb.strengths?.length > 0 ? `<div class="strengths">✅ Strengths: ${strengths}</div>` : ''}
+                            ${fb.weaknesses?.length > 0 ? `<div class="weaknesses">⚠️ Areas to improve: ${weaknesses}</div>` : ''}
+                        </div>
+                    `;
+                }
+            }
+            html += `</div>`;
 
-            // Get feedback weaknesses
+            // 5. Recommendations
+            html += `<div class="report-section"><div class="section-title">💡 Recommendations</div>`;
+            // Identify weak courses (progress < 50%)
+            const weakCourses = progressRecords.filter(p => p.progress < 50).map(p => p.courseTitle || p.courseId || 'Course');
+            const mediumCourses = progressRecords.filter(p => p.progress >= 50 && p.progress < 70).map(p => p.courseTitle || p.courseId || 'Course');
+
+            // Collect weaknesses from feedback
             const allWeaknesses = [];
-            for (const fb of feedback) {
+            for (const fb of feedbackRecords) {
                 if (fb.weaknesses) {
                     allWeaknesses.push(...fb.weaknesses);
                 }
             }
+            const uniqueWeak = [...new Set(allWeaknesses)];
 
-            let html = `
-                <div class="report-section">
-                    <div class="section-title">💡 Recommendations</div>
-                    <ul style="padding-left:1.2rem;color:#555;line-height:2;">
-            `;
-
+            html += `<ul style="padding-left:1.2rem;color:#555;line-height:2;">`;
             if (weakCourses.length > 0) {
                 html += weakCourses.map(s => `<li>🔴 Focus more on <strong>${s}</strong> - practice daily for 20 minutes</li>`).join('');
             }
-
             if (mediumCourses.length > 0) {
                 html += mediumCourses.map(s => `<li>🟡 Review <strong>${s}</strong> weekly to strengthen your understanding</li>`).join('');
             }
-
-            if (allWeaknesses.length > 0) {
-                const uniqueWeak = [...new Set(allWeaknesses)];
+            if (uniqueWeak.length > 0) {
                 html += uniqueWeak.map(w => `<li>📝 Work on: <strong>${w}</strong> - ask your tutor for extra practice</li>`).join('');
             }
-
-            if (weakCourses.length === 0 && mediumCourses.length === 0 && allWeaknesses.length === 0) {
+            if (weakCourses.length === 0 && mediumCourses.length === 0 && uniqueWeak.length === 0) {
                 html += `<li>🎉 Great job! Keep up the excellent work!</li>`;
                 html += `<li>🚀 Challenge yourself with advanced topics</li>`;
             }
+            html += `<li>💪 Maintain consistent daily practice</li>`;
+            html += `</ul>`;
+            html += `</div>`;
 
-            html += `
-                        <li>💪 Maintain consistent daily practice</li>
-                    </ul>
-                </div>
-            `;
-
-            // Add action buttons
+            // 6. Action Buttons
             html += `
                 <button class="btn-primary mt-1" onclick="window.location.href='parent-tutors.html'">
                     👨‍🏫 Find a Tutor
@@ -628,7 +569,7 @@
                 </button>
             `;
 
-            container.innerHTML += html;
+            container.innerHTML = html;
         }
 
         // ============================================================
@@ -639,8 +580,8 @@
             else { loadReport(); }
         });
 
-        console.log('📊 Parent Report View loaded with REAL data!');
-        console.log('📝 Shows AI usage, tutor feedback, and course progress.');
+        console.log('📊 Parent Report View - REAL DATA!');
+        console.log('📝 Shows AI usage, tutor feedback, and course progress from Firebase.');
     </script>
 
 </body>
