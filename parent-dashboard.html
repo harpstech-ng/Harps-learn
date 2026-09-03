@@ -5,11 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>HarpsLearn - Parent</title>
 
+    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
     <script src="https://upload-widget.cloudinary.com/global/all.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>
 
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -20,33 +22,118 @@
             overflow-x: hidden;
         }
 
-        /* ===== ELEGANT LOADING SCREEN ===== */
+        /* ===== LOADING SCREEN WITH ANIMATED BACKGROUND ===== */
         #loadingScreen {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             z-index: 9999;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            transition: opacity 0.5s ease;
+            transition: opacity 0.8s ease;
+            overflow: hidden;
+            background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460, #1a1a2e);
+            background-size: 400% 400%;
+            animation: gradientShift 12s ease infinite;
         }
-        #loadingScreen .logo-text {
-            font-size: 2.5rem;
-            font-weight: 700;
-            color: white;
-            margin-bottom: 1.5rem;
-            letter-spacing: -1px;
-            animation: pulse 1.5s ease-in-out infinite;
+        #loadingScreen.skip {
+            opacity: 0;
+            pointer-events: none;
         }
-        #loadingScreen .logo-text span { color: #fbbf24; }
-        #loadingScreen .spinner-container {
-            width: 60px;
-            height: 60px;
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            25% { background-position: 50% 0%; }
+            50% { background-position: 100% 50%; }
+            75% { background-position: 50% 100%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        #particlesCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .glow {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.3;
+            z-index: 0;
+            animation: floatGlow 8s ease-in-out infinite alternate;
+        }
+        .glow-1 { width: 400px; height: 400px; background: #667eea; top: -100px; right: -100px; animation-delay: 0s; }
+        .glow-2 { width: 350px; height: 350px; background: #764ba2; bottom: -100px; left: -100px; animation-delay: 3s; }
+        .glow-3 { width: 250px; height: 250px; background: #fbbf24; top: 50%; left: 50%; transform: translate(-50%, -50%); animation-delay: 6s; }
+        @keyframes floatGlow {
+            0% { transform: translate(0,0) scale(1); opacity: 0.2; }
+            100% { transform: translate(30px,-30px) scale(1.2); opacity: 0.4; }
+        }
+
+        #loadingScreen .content {
             position: relative;
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 2rem;
+            width: 100%;
+            max-width: 500px;
         }
-        #loadingScreen .spinner-container .ring {
+
+        #lottie-container {
+            width: 160px;
+            height: 160px;
+            margin-bottom: 0.5rem;
+            filter: drop-shadow(0 8px 30px rgba(0,0,0,0.3));
+        }
+        @media (max-width: 600px) {
+            #lottie-container { width: 120px; height: 120px; }
+        }
+
+        #loadingScreen .logo-text {
+            font-size: 2.8rem;
+            font-weight: 800;
+            color: white;
+            margin-bottom: 0.2rem;
+            letter-spacing: -1px;
+            text-shadow: 0 4px 30px rgba(0,0,0,0.3);
+            animation: logoPulse 2.5s ease-in-out infinite;
+        }
+        #loadingScreen .logo-text span { color: #fbbf24; animation: logoPulse 2.5s ease-in-out infinite 0.3s; }
+        @keyframes logoPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.03); }
+        }
+
+        #loadingScreen .tagline {
+            color: rgba(255,255,255,0.7);
+            font-size: 0.9rem;
+            font-weight: 300;
+            letter-spacing: 3px;
+            margin-bottom: 1.2rem;
+            text-shadow: 0 2px 20px rgba(0,0,0,0.2);
+            animation: fadeInOut 3s ease-in-out infinite;
+        }
+        @keyframes fadeInOut {
+            0%, 100% { opacity: 0.7; }
+            50% { opacity: 1; }
+        }
+
+        .spinner-container {
+            width: 50px;
+            height: 50px;
+            position: relative;
+            margin-bottom: 0.5rem;
+        }
+        .spinner-container .ring {
             position: absolute;
             width: 100%;
             height: 100%;
@@ -55,7 +142,7 @@
             border-top-color: white;
             animation: spin 1s linear infinite;
         }
-        #loadingScreen .spinner-container .ring:nth-child(2) {
+        .spinner-container .ring:nth-child(2) {
             width: 80%;
             height: 80%;
             top: 10%;
@@ -64,7 +151,7 @@
             animation-duration: 0.8s;
             animation-direction: reverse;
         }
-        #loadingScreen .spinner-container .ring:nth-child(3) {
+        .spinner-container .ring:nth-child(3) {
             width: 60%;
             height: 60%;
             top: 20%;
@@ -76,17 +163,14 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
-        }
-        #loadingScreen p {
-            margin-top: 1.5rem;
+
+        #loadingScreen .loading-text {
+            margin-top: 0.8rem;
             color: rgba(255,255,255,0.8);
-            font-size: 0.95rem;
+            font-size: 0.9rem;
             letter-spacing: 1px;
         }
-        #loadingScreen .dots {
+        #loadingScreen .loading-text .dots {
             display: inline-block;
             animation: dots 1.5s steps(4, end) infinite;
         }
@@ -96,12 +180,43 @@
             50% { content: '..'; }
             75% { content: '...'; }
         }
+
+        .progress-bar-container {
+            width: 220px;
+            height: 5px;
+            background: rgba(255,255,255,0.12);
+            border-radius: 4px;
+            margin-top: 0.8rem;
+            overflow: hidden;
+            position: relative;
+        }
+        .progress-bar-container .progress-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #667eea, #fbbf24, #22c55e, #667eea);
+            background-size: 200% 100%;
+            border-radius: 4px;
+            transition: width 0.4s ease;
+            animation: waveProgress 2s linear infinite;
+        }
+        @keyframes waveProgress {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+
+        #loadingScreen .loading-status {
+            color: rgba(255,255,255,0.4);
+            font-size: 0.7rem;
+            margin-top: 0.4rem;
+            letter-spacing: 1px;
+            transition: all 0.3s ease;
+        }
+
         #loadingScreen.hidden {
             opacity: 0;
             pointer-events: none;
         }
 
-        /* ===== MAIN CONTENT ===== */
         #mainContent { display: none; opacity: 0; transition: opacity 0.5s ease; }
         #mainContent.visible { display: block; opacity: 1; }
 
@@ -440,6 +555,7 @@
             margin-bottom: 0.75rem;
             transition: all 0.3s ease;
             border: 1px solid #e5e7eb;
+            cursor: pointer;
         }
         .child-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
         .child-card .child-name { font-weight: 600; color: #1a1a2e; font-size: 1rem; }
@@ -466,28 +582,6 @@
             font-size: 1.1rem;
         }
         .link-child-section input:focus { outline: none; border-color: #667eea; }
-
-        .secret-box {
-            background: #f8f9fa;
-            padding: 0.8rem;
-            border-radius: 10px;
-            text-align: center;
-            margin: 0.5rem 0;
-            border: 2px dashed #e5e7eb;
-        }
-        .secret-box code {
-            font-size: 1.1rem;
-            letter-spacing: 2px;
-            font-weight: bold;
-            color: #764ba2;
-            background: white;
-            padding: 0.4rem 1rem;
-            border-radius: 6px;
-            display: inline-block;
-            margin: 0.3rem 0;
-            border: 1px solid #e5e7eb;
-            word-break: break-all;
-        }
 
         .report-toggle {
             display: flex;
@@ -560,20 +654,6 @@
         }
         .btn-outline:hover { background: #667eea; color: white; }
 
-        .btn-sm { padding: 4px 12px; font-size: 0.75rem; }
-        .btn-danger {
-            background: #ef4444;
-            color: white;
-            border: none;
-            padding: 0.4rem 1rem;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            font-size: 0.8rem;
-        }
-        .btn-danger:hover { background: #dc2626; }
-
         .badge {
             display: inline-block;
             background: #22c55e;
@@ -588,7 +668,6 @@
         .text-muted { color: #666; font-size: 0.85rem; }
         .flex-between { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; }
         .mt-1 { margin-top: 0.5rem; }
-        .mt-2 { margin-top: 1rem; }
 
         .toast {
             position: fixed;
@@ -611,7 +690,6 @@
         .toast.warning { background: #f59e0b; }
         @keyframes toastSlide { from { transform: translateX(-50%) translateY(100px); opacity: 0; } to { transform: translateX(-50%) translateY(0); opacity: 1; } }
 
-        /* ===== MODAL FOR POST VIEWING ===== */
         .modal-overlay {
             display: none;
             position: fixed;
@@ -653,6 +731,8 @@
             .stat-card .number { font-size: 1.2rem; }
             .container { padding: 0.4rem; }
             .welcome-banner h2 { font-size: 1.1rem; }
+            #lottie-container { width: 100px; height: 100px; }
+            #loadingScreen .logo-text { font-size: 2rem; }
         }
 
         .sidebar::-webkit-scrollbar, .notif-modal::-webkit-scrollbar, .modal-overlay .modal::-webkit-scrollbar { width: 4px; }
@@ -663,13 +743,29 @@
 
     <!-- ===== LOADING SCREEN ===== -->
     <div id="loadingScreen">
-        <div class="logo-text">👪 Harps<span>Learn</span></div>
-        <div class="spinner-container">
-            <div class="ring"></div>
-            <div class="ring"></div>
-            <div class="ring"></div>
+        <div class="glow glow-1"></div>
+        <div class="glow glow-2"></div>
+        <div class="glow glow-3"></div>
+        <canvas id="particlesCanvas"></canvas>
+
+        <div class="content">
+            <div id="lottie-container"></div>
+            <div class="logo-text">👪 Harps<span>Learn</span></div>
+            <div class="tagline">🇳🇬 The OS for African Exam Success</div>
+
+            <div class="spinner-container">
+                <div class="ring"></div>
+                <div class="ring"></div>
+                <div class="ring"></div>
+            </div>
+
+            <div class="loading-text">Loading your parent dashboard<span class="dots">...</span></div>
+
+            <div class="progress-bar-container">
+                <div class="progress-fill" id="loadingProgress"></div>
+            </div>
+            <div class="loading-status" id="loadingStatus">Initializing...</div>
         </div>
-        <p>Loading your parent dashboard<span class="dots">...</span></p>
     </div>
 
     <!-- ===== MAIN CONTENT ===== -->
@@ -757,10 +853,18 @@
             </div>
         </div>
 
+        <!-- ===== MODAL FOR POST VIEWING ===== -->
+        <div class="modal-overlay" id="tutorProfileModal">
+            <div class="modal">
+                <button class="modal-close" onclick="closeTutorProfile()">✕</button>
+                <div id="tutorProfileContent"></div>
+            </div>
+        </div>
+
         <!-- ===== MAIN CONTENT ===== -->
         <div class="container">
 
-            <!-- Welcome -->
+            <!-- Welcome Banner -->
             <div class="welcome-banner">
                 <h2 id="welcomeMsg">Welcome back, Parent! 👪</h2>
                 <p>Monitor your child's progress and performance.</p>
@@ -840,7 +944,7 @@
                 </div>
             </div>
 
-            <!-- ===== MODERATION ALERT - NEW VERSION ===== -->
+            <!-- ===== MODERATION ALERT ===== -->
             <div id="moderationAlert" class="post-card" style="display:none;background:#fef3c7;border:2px solid #f59e0b;">
                 <div class="flex-between">
                     <div>
@@ -851,16 +955,6 @@
                 </div>
             </div>
 
-        </div>
-    </div>
-
-    <!-- ===== MODAL FOR POST VIEWING (added) ===== -->
-    <div class="modal-overlay" id="tutorProfileModal">
-        <div class="modal">
-            <button class="modal-close" onclick="closeTutorProfile()">✕</button>
-            <div id="tutorProfileContent">
-                <!-- Post content will be injected here -->
-            </div>
         </div>
     </div>
 
@@ -887,14 +981,145 @@
             unsignedPreset: 'harpslearn_unsigned'
         };
 
+        // ============================================================
+        // 🎨 PARTICLES ANIMATION
+        // ============================================================
+        const canvas = document.getElementById('particlesCanvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+        let animFrame;
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        class Particle {
+            constructor() { this.reset(); }
+            reset() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.size = Math.random() * 3 + 1;
+                this.speedX = (Math.random() - 0.5) * 0.8;
+                this.speedY = (Math.random() - 0.5) * 0.8;
+                this.opacity = Math.random() * 0.6 + 0.2;
+                this.color = ['rgba(255,255,255,', 'rgba(251,191,36,', 'rgba(102,126,234,', 'rgba(34,197,94,'][Math.floor(Math.random() * 4)];
+            }
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+                if (this.x < 0 || this.x > canvas.width) this.speedX *= -1;
+                if (this.y < 0 || this.y > canvas.height) this.speedY *= -1;
+            }
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = this.color + this.opacity + ')';
+                ctx.fill();
+            }
+        }
+
+        function initParticles(count = 60) {
+            particles = [];
+            for (let i = 0; i < count; i++) particles.push(new Particle());
+        }
+
+        function animateParticles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particles.forEach(p => { p.update(); p.draw(); });
+            for (let i = 0; i < particles.length; i++) {
+                for (let j = i + 1; j < particles.length; j++) {
+                    const dx = particles[i].x - particles[j].x;
+                    const dy = particles[i].y - particles[j].y;
+                    const dist = Math.sqrt(dx*dx + dy*dy);
+                    if (dist < 120) {
+                        ctx.beginPath();
+                        ctx.moveTo(particles[i].x, particles[i].y);
+                        ctx.lineTo(particles[j].x, particles[j].y);
+                        ctx.strokeStyle = 'rgba(255,255,255,' + (0.08 * (1 - dist / 120)) + ')';
+                        ctx.lineWidth = 0.8;
+                        ctx.stroke();
+                    }
+                }
+            }
+            animFrame = requestAnimationFrame(animateParticles);
+        }
+
+        initParticles(65);
+        animateParticles();
+
+        // ============================================================
+        // 🧑‍🎓 LOTTIE ANIMATION
+        // ============================================================
+        const lottieContainer = document.getElementById('lottie-container');
+        const animation = lottie.loadAnimation({
+            container: lottieContainer,
+            renderer: 'svg',
+            loop: true,
+            autoplay: true,
+            path: 'https://assets9.lottiefiles.com/packages/lf20_p1qi2p2w.json'
+        });
+        animation.addEventListener('error', function() {
+            lottieContainer.innerHTML = '👪';
+            lottieContainer.style.fontSize = '4rem';
+            lottieContainer.style.display = 'flex';
+            lottieContainer.style.alignItems = 'center';
+            lottieContainer.style.justifyContent = 'center';
+        });
+
+        // ============================================================
+        // LOADING SCREEN CONTROL
+        // ============================================================
+        function controlLoadingScreen() {
+            const loadingScreen = document.getElementById('loadingScreen');
+            const mainContent = document.getElementById('mainContent');
+            if (localStorage.getItem('parentDashboardLoaded') === 'true') {
+                loadingScreen.classList.add('skip');
+                mainContent.classList.add('visible');
+                mainContent.style.display = 'block';
+                return true;
+            }
+            return false;
+        }
+
+        function markDashboardLoaded() {
+            localStorage.setItem('parentDashboardLoaded', 'true');
+            const loadingScreen = document.getElementById('loadingScreen');
+            const mainContent = document.getElementById('mainContent');
+            loadingScreen.classList.add('hidden');
+            mainContent.classList.add('visible');
+            mainContent.style.display = 'block';
+        }
+
+        // ============================================================
+        // LOADING PROGRESS
+        // ============================================================
+        let loadingProgress = 0;
+        const progressFill = document.getElementById('loadingProgress');
+        const loadingStatus = document.getElementById('loadingStatus');
+
+        function updateProgress(value, message) {
+            loadingProgress = Math.min(value, 100);
+            progressFill.style.width = loadingProgress + '%';
+            if (message) loadingStatus.textContent = message;
+        }
+
+        // ============================================================
+        // GLOBALS
+        // ============================================================
         let currentUser = null;
         let userData = null;
         let parentData = null;
         let linkedChildren = [];
         let notifications = [];
         let messages = [];
-        let moderationPostData = null;  // stores the post to be viewed
+        let moderationPostData = null;
 
+        // ============================================================
+        // UTILITY FUNCTIONS
+        // ============================================================
         function showToast(message, type = 'info') {
             const existing = document.querySelector('.toast');
             if (existing) existing.remove();
@@ -915,6 +1140,7 @@
         }
 
         function timeAgo(date) {
+            if (!date) return 'N/A';
             const seconds = Math.floor((new Date() - date) / 1000);
             if (seconds < 60) return 'just now';
             const minutes = Math.floor(seconds / 60);
@@ -983,14 +1209,12 @@
         }
 
         // ============================================================
-        // 📝 OPEN MODERATION POST - Shows the actual post
+        // 📝 OPEN MODERATION POST
         // ============================================================
-
         async function openModerationPost() {
             try {
-                console.log('openModerationPost called, moderationPostData:', moderationPostData);
                 if (!moderationPostData) {
-                    showToast('No post to view. Please check the notification.', 'warning');
+                    showToast('No post to view', 'warning');
                     return;
                 }
 
@@ -1003,43 +1227,31 @@
                 const time = post.createdAt?.toDate?.() || new Date();
 
                 const modalContent = document.getElementById('tutorProfileContent');
-                if (modalContent) {
-                    modalContent.innerHTML = `
-                        <div style="padding:0.5rem 0;">
-                            <div style="display:flex;gap:0.6rem;align-items:center;margin-bottom:0.5rem;">
-                                <div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#667eea,#764ba2);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:1rem;">
-                                    ${post.userAvatar ? `<img src="${post.userAvatar}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;" />` : post.userName?.charAt(0).toUpperCase() || '👤'}
-                                </div>
-                                <div>
-                                    <div style="font-weight:600;color:#1a1a2e;">${userName}</div>
-                                    <div style="font-size:0.7rem;color:#999;">${timeAgo(time)}</div>
-                                </div>
+                modalContent.innerHTML = `
+                    <div style="padding:0.5rem 0;">
+                        <div style="display:flex;gap:0.6rem;align-items:center;margin-bottom:0.5rem;">
+                            <div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#667eea,#764ba2);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:1rem;">
+                                ${post.userAvatar ? `<img src="${post.userAvatar}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;" />` : post.userName?.charAt(0).toUpperCase() || '👤'}
                             </div>
-                            <div style="padding:0.5rem;background:#f8f9fa;border-radius:8px;margin:0.5rem 0;">
-                                <div style="font-size:0.7rem;color:#666;">Status: <span style="font-weight:600;color:${status === 'approved' ? '#22c55e' : status === 'rejected' ? '#ef4444' : '#f59e0b'};">${status.toUpperCase()}</span></div>
-                                ${status === 'rejected' ? `<div style="font-size:0.85rem;color:#ef4444;margin-top:0.2rem;">❌ Reason: ${reason}</div>` : ''}
-                            </div>
-                            <div style="font-size:0.95rem;color:#333;line-height:1.6;">${content}</div>
-                            ${image}
-                            <div style="margin-top:1rem;display:flex;gap:0.5rem;">
-                                <button onclick="closeTutorProfile()" style="flex:1;padding:0.6rem;background:#667eea;color:white;border:none;border-radius:10px;font-weight:600;cursor:pointer;">Close</button>
-                                ${status === 'rejected' ? `<button onclick="window.location.href='parent-messages.html'" style="flex:1;padding:0.6rem;background:#22c55e;color:white;border:none;border-radius:10px;font-weight:600;cursor:pointer;">💬 Message Tutor</button>` : ''}
+                            <div>
+                                <div style="font-weight:600;color:#1a1a2e;">${userName}</div>
+                                <div style="font-size:0.7rem;color:#999;">${timeAgo(time)}</div>
                             </div>
                         </div>
-                    `;
-                    document.getElementById('tutorProfileModal').classList.add('active');
-                    document.body.style.overflow = 'hidden';
-                } else {
-                    // Fallback to toast
-                    showToast(
-                        `📝 Post from ${userName}\n` +
-                        `📅 ${time.toLocaleDateString()}\n` +
-                        `📊 Status: ${status.toUpperCase()}\n` +
-                        `📝 Reason: ${reason}\n\n` +
-                        `${content}`,
-                        'warning'
-                    );
-                }
+                        <div style="padding:0.5rem;background:#f8f9fa;border-radius:8px;margin:0.5rem 0;">
+                            <div style="font-size:0.7rem;color:#666;">Status: <span style="font-weight:600;color:${status === 'approved' ? '#22c55e' : status === 'rejected' ? '#ef4444' : '#f59e0b'};">${status.toUpperCase()}</span></div>
+                            ${status === 'rejected' ? `<div style="font-size:0.85rem;color:#ef4444;margin-top:0.2rem;">❌ Reason: ${reason}</div>` : ''}
+                        </div>
+                        <div style="font-size:0.95rem;color:#333;line-height:1.6;">${content}</div>
+                        ${image}
+                        <div style="margin-top:1rem;display:flex;gap:0.5rem;">
+                            <button onclick="closeTutorProfile()" style="flex:1;padding:0.6rem;background:#667eea;color:white;border:none;border-radius:10px;font-weight:600;cursor:pointer;">Close</button>
+                            ${status === 'rejected' ? `<button onclick="window.location.href='parent-messages.html'" style="flex:1;padding:0.6rem;background:#22c55e;color:white;border:none;border-radius:10px;font-weight:600;cursor:pointer;">💬 Message Tutor</button>` : ''}
+                        </div>
+                    </div>
+                `;
+                document.getElementById('tutorProfileModal').classList.add('active');
+                document.body.style.overflow = 'hidden';
 
             } catch (error) {
                 console.error('Error opening moderation post:', error);
@@ -1053,9 +1265,8 @@
         }
 
         // ============================================================
-        // 🔔 NOTIFICATIONS - UPDATED
+        // 🔔 NOTIFICATIONS
         // ============================================================
-
         async function loadNotifications() {
             try {
                 const user = auth.currentUser;
@@ -1086,20 +1297,12 @@
                     document.getElementById('moderationAlert').style.display = 'block';
                     const latest = moderationNotifs[0];
                     document.getElementById('moderationMessage').textContent = latest.message || 'Your child has a post that needs attention.';
-                    
-                    // Store the actual post data
+
                     if (latest.postId) {
                         const postDoc = await db.collection('posts').doc(latest.postId).get();
                         if (postDoc.exists) {
                             moderationPostData = { id: latest.postId, ...postDoc.data() };
-                            console.log('✅ Moderation post loaded:', moderationPostData);
-                        } else {
-                            console.warn('Post not found for ID:', latest.postId);
-                            moderationPostData = null;
                         }
-                    } else {
-                        console.warn('Notification does not have postId:', latest);
-                        moderationPostData = null;
                     }
                 } else {
                     document.getElementById('moderationAlert').style.display = 'none';
@@ -1120,7 +1323,10 @@
                     const icon = notif.type === 'message' ? '💬' : 
                                 notif.type === 'moderation' ? '⚠️' : 
                                 notif.type === 'premium' ? '💎' : 
-                                notif.type === 'booking' ? '📅' : '📢';
+                                notif.type === 'booking' ? '📅' : 
+                                notif.type === 'parent_link' ? '👨‍👧' :
+                                notif.type === 'tutor_feedback' ? '📝' :
+                                notif.type === 'class_completed' ? '🎉' : '📢';
                     html += `
                         <div class="notif-item ${unreadClass}" onclick="markRead('${notif.id}')">
                             <span class="notif-time">${timeAgo(time)}</span>
@@ -1172,7 +1378,6 @@
         // ============================================================
         // 💬 LOAD MESSAGES
         // ============================================================
-
         async function loadMessages() {
             try {
                 const user = auth.currentUser;
@@ -1183,8 +1388,7 @@
                     .where('read', '==', false)
                     .get();
 
-                const unreadCount = snapshot.size;
-                document.getElementById('messageCount').textContent = unreadCount;
+                document.getElementById('messageCount').textContent = snapshot.size;
 
             } catch (error) {
                 console.error('Error loading messages:', error);
@@ -1194,7 +1398,6 @@
         // ============================================================
         // 👪 LOAD PARENT DASHBOARD
         // ============================================================
-
         async function loadParentDashboard() {
             try {
                 const user = auth.currentUser;
@@ -1204,9 +1407,16 @@
                     return;
                 }
 
+                updateProgress(10, '🔐 Authenticating...');
                 currentUser = user;
 
-                const userDoc = await db.collection('users').doc(user.uid).get();
+                updateProgress(20, '📡 Loading profile...');
+                const [userDoc, parentDoc] = await Promise.all([
+                    db.collection('users').doc(user.uid).get(),
+                    db.collection('parents').doc(user.uid).get()
+                ]);
+
+                updateProgress(35, '👤 Setting up your profile...');
                 userData = userDoc.data();
 
                 if (!userData || userData.role !== 'parent') {
@@ -1216,6 +1426,7 @@
                     return;
                 }
 
+                parentData = parentDoc.data();
                 const name = userData.fullName || 'Parent';
                 document.getElementById('sidebarName').textContent = name;
                 document.getElementById('sidebarEmail').textContent = userData.email || 'No email';
@@ -1229,35 +1440,36 @@
                     document.getElementById('navAvatar').textContent = name.charAt(0).toUpperCase();
                 }
 
-                const parentDoc = await db.collection('parents').doc(user.uid).get();
-                parentData = parentDoc.data();
-
                 if (parentData && parentData.reportEnabled) {
                     document.getElementById('reportToggle').checked = true;
                 }
 
+                updateProgress(50, '👨‍👧 Loading children...');
                 await loadLinkedChildren(user.uid);
+
+                updateProgress(75, '📬 Loading notifications...');
                 await loadNotifications();
                 await loadMessages();
+
+                updateProgress(90, '📋 Loading recent activity...');
                 await loadRecentActivity();
 
-                setTimeout(() => {
-                    document.getElementById('loadingScreen').classList.add('hidden');
-                    document.getElementById('mainContent').classList.add('visible');
-                }, 800);
+                updateProgress(100, '🎉 Ready!');
+
+                markDashboardLoaded();
 
             } catch (error) {
                 console.error('Error loading dashboard:', error);
                 showToast('Error loading dashboard', 'error');
                 document.getElementById('loadingScreen').classList.add('hidden');
                 document.getElementById('mainContent').classList.add('visible');
+                document.getElementById('mainContent').style.display = 'block';
             }
         }
 
         // ============================================================
-        // 👨‍👧 LOAD LINKED CHILDREN - REAL DATA FROM FIREBASE
+        // 👨‍👧 LOAD LINKED CHILDREN
         // ============================================================
-
         async function loadLinkedChildren(parentId) {
             try {
                 const snapshot = await db.collection('students')
@@ -1270,11 +1482,11 @@
                     const userDoc = await db.collection('users').doc(data.userId).get();
                     const userData = userDoc.exists ? userDoc.data() : {};
 
-                    // Get REAL progress from studentProgress collection
                     let progress = 0;
                     let avgScore = 0;
                     let lessonsCompleted = 0;
                     let certificates = 0;
+                    let tutorRating = 0;
 
                     const progressSnapshot = await db.collection('studentProgress')
                         .where('studentId', '==', data.userId)
@@ -1284,12 +1496,10 @@
                         const pData = pDoc.data();
                         progress = Math.max(progress, pData.progress || 0);
                         lessonsCompleted = pData.lessonsCompleted || 0;
-                        if (pData.averageScore) {
-                            avgScore = pData.averageScore;
-                        }
+                        if (pData.averageScore) avgScore = pData.averageScore;
+                        if (pData.overallTutorRating) tutorRating = pData.overallTutorRating;
                     });
 
-                    // Get certificates
                     const certSnapshot = await db.collection('certificates')
                         .where('studentId', '==', data.userId)
                         .get();
@@ -1302,7 +1512,8 @@
                         progress: progress,
                         averageScore: avgScore || 0,
                         lessonsCompleted: lessonsCompleted,
-                        certificates: certificates
+                        certificates: certificates,
+                        tutorRating: tutorRating
                     });
                 }
 
@@ -1329,10 +1540,11 @@
                     const childName = child.userData?.fullName || 'Child';
                     const progress = child.progress || 0;
                     const score = child.averageScore || 0;
+                    const tutorMark = child.tutorRating || 0;
                     totalScore += score;
 
                     html += `
-                        <div class="child-card">
+                        <div class="child-card" onclick="window.location.href='parent-report-view.html?child=${child.id}'">
                             <div class="flex-between">
                                 <div>
                                     <div class="child-name">${childName}</div>
@@ -1351,6 +1563,7 @@
                             <div style="margin-top:0.4rem;font-size:0.75rem;color:#666;display:flex;gap:1rem;flex-wrap:wrap;">
                                 <span>✅ ${child.lessonsCompleted || 0} lessons completed</span>
                                 <span>🏆 ${child.certificates || 0} certificates earned</span>
+                                ${tutorMark > 0 ? `<span>👨‍🏫 Tutor mark: ${tutorMark}%</span>` : ''}
                             </div>
                             <button onclick="event.stopPropagation(); window.location.href='parent-report-view.html?child=${child.id}'" style="margin-top:0.5rem;background:none;border:1px solid #667eea;color:#667eea;padding:4px 12px;border-radius:6px;font-size:0.75rem;cursor:pointer;">
                                 View Full Report →
@@ -1371,7 +1584,6 @@
         // ============================================================
         // 📋 LOAD RECENT ACTIVITY
         // ============================================================
-
         async function loadRecentActivity() {
             try {
                 const user = auth.currentUser;
@@ -1418,9 +1630,8 @@
         }
 
         // ============================================================
-        // 🔗 LINK CHILD - WITH STUDENT NOTIFICATION
+        // 🔗 LINK CHILD
         // ============================================================
-
         async function linkChild() {
             const input = document.getElementById('secretKeyInput');
             const key = input.value.trim().toUpperCase();
@@ -1493,7 +1704,6 @@
         // ============================================================
         // 📬 REPORT TOGGLE
         // ============================================================
-
         async function toggleReport() {
             try {
                 const user = auth.currentUser;
@@ -1519,11 +1729,11 @@
         // ============================================================
         // 🚪 LOGOUT
         // ============================================================
-
         async function logout() {
             if (!confirm('Are you sure you want to logout?')) return;
 
             try {
+                localStorage.removeItem('parentDashboardLoaded');
                 await auth.signOut();
                 showToast('👋 Logged out', 'success');
                 window.location.href = 'index.html';
@@ -1532,21 +1742,33 @@
             }
         }
 
+        // ============================================================
+        // 🚀 AUTO-RUN
+        // ============================================================
         auth.onAuthStateChanged(user => {
             if (!user) {
                 document.getElementById('loadingScreen').classList.add('hidden');
                 window.location.href = 'index.html';
             } else {
-                loadParentDashboard();
+                const skipped = controlLoadingScreen();
+                if (!skipped) {
+                    loadParentDashboard();
+                } else {
+                    // Already loaded, refresh in background
+                    loadParentDashboard();
+                }
                 setInterval(loadNotifications, 30000);
                 setInterval(() => loadLinkedChildren(user.uid), 60000);
                 setInterval(loadMessages, 30000);
             }
         });
 
-        console.log('👪 Parent Dashboard PRO loaded!');
-        console.log('✅ Moderation alert now opens the actual post!');
-        console.log('🔍 Check the console for debug info when you click "View Post".');
+        console.log('👪 Parent Dashboard - COMPLETE!');
+        console.log('✅ Animated loading screen with skip on subsequent visits');
+        console.log('🔔 All notifications working: booking, confirmation, moderation, feedback');
+        console.log('👨‍👧 Real child progress from Firebase');
+        console.log('📊 Tutor feedback and marks visible');
+        console.log('🎨 Particles + Lottie animation on loading');
     </script>
 
 </body>
