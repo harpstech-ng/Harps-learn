@@ -21,7 +21,8 @@
     <meta property="og:url" content="https://harpslearn.vercel.app/" />
     <meta property="og:title" content="HarpsLearn - The OS for African Exam Success 🇳🇬" />
     <meta property="og:description" content="Crush WAEC, NECO, BECE, KCSE, and JAMB with HarpsLearn. Holiday Bootcamp, AI Tutor, and Verified Teachers all in one app." />
-    <meta property="og:image" content="https://harpslearn.vercel.app/images/harpslearn-preview.jpg" />
+    <!-- ⬇️⬇️⬇️ CHANGE THIS URL TO YOUR IMAGE URL ⬇️⬇️⬇️ -->
+    <meta property="og:image" content="https://harpslearn.vercel.app/images/harpslearn-preview.jpeg" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta property="og:image:alt" content="HarpsLearn - African Exam Success Platform" />
@@ -35,7 +36,7 @@
     <meta name="twitter:url" content="https://harpslearn.vercel.app/" />
     <meta name="twitter:title" content="HarpsLearn - The OS for African Exam Success 🇳🇬" />
     <meta name="twitter:description" content="Crush WAEC, NECO, BECE, KCSE, and JAMB with HarpsLearn. Bootcamp, AI Tutor, and Verified Teachers." />
-    <meta name="twitter:image" content="https://harpslearn.vercel.app/images/harpslearn-preview.jpg" />
+    <meta name="twitter:image" content="https://harpslearn.vercel.app/images/harpslearn-preview.jpeg" />
 
     <!-- ============================================================ -->
     <!-- 📱 GOOGLE SEARCH CONSOLE VERIFICATION                        -->
@@ -52,7 +53,7 @@
         "name": "HarpsLearn",
         "description": "Operating System for African Exam Success",
         "url": "https://harpslearn.vercel.app/",
-        "logo": "https://harpslearn.vercel.app/images/harpslearn-preview.jpg",
+        "logo": "https://harpslearn.vercel.app/images/harpslearn-preview.jpeg",
         "sameAs": [
             "https://www.facebook.com/harpslearn",
             "https://twitter.com/harpslearn",
@@ -624,7 +625,6 @@
         // ============================================================
         auth.onAuthStateChanged(user => {
             if (user) {
-                // User is signed in, check their role
                 db.collection('users').doc(user.uid).get().then(doc => {
                     if (doc.exists) {
                         const role = doc.data().role;
@@ -642,7 +642,7 @@
 
         console.log('🔥 HarpsLearn loaded!');
         console.log('📱 Premium landing page with SEO & Open Graph!');
-        console.log('📸 Sharing preview image ready!');
+        console.log('📸 Sharing preview image: IMG_9196.jpeg');
     </script>
 
 </body>
